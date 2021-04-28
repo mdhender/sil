@@ -57,7 +57,7 @@
 *	       PATVAL
 *	       VARVAL
 *	       XYARGS
-*      9.   Arithmetic Operations, Predicates and Functions
+*      9.   Arithmetic Operations, Predicates, and Functions
 *	       ADD
 *	       DIV
 *	       EXP
