@@ -1,19 +1,5 @@
 # SIL: build order and first milestones
 
-| Milestone | Status |
-|-----------|--------|
-| M0        | TODO   |
-| M1        | TODO   |
-| M2        | TODO   |
-| M3        | TODO   |
-| M4        | TODO   |
-| M5        | TODO   |
-| M6        | TODO   |
-| M7        | TODO   |
-| M8        | TODO   |
-| M9        | TODO   |
-| M10       | TODO   |
-
 ## Context
 
 `mdhender/sil` aims to run the historical Macro SNOBOL4 implementation by implementing the machine it was written for — SIL — rather than reimplementing SNOBOL4 in Go. The repo is currently a skeleton: descriptor/specifier types transcribed from S4D58 §3, two implemented instructions (`ACOMP`, `ACOMPC`), and an empty `main`.
@@ -59,19 +45,19 @@ Each exit criterion is mechanically checkable. M0–M2 involve zero instruction 
 
 A milestone is **done** when its exit criterion is checked by a test that *ran* — the whole-source tests skip when `engines/sil-v3.11.sil` is absent, and a skip is not a pass.
 
-| | Milestone | Status | Where |
-|---|---|---|---|
-| M0 | Scanner | **done** — `86a6d81` | `pkg/sil/scanner` |
-| M1 | Operand parser | **done** — `adbbae0` | `pkg/sil/parser` |
-| M2 | The symbol gate | **done** — `c1a4ccc` | `pkg/sil/symtab` |
-| M3 | Externals chosen; layout closes | next | |
-| M4 | Instruction table and shape validation | | |
-| M5 | First vertical slice runs | | |
-| M6 | Instruction batches by §7.5 classification | | |
-| M7 | Syntax tables and `STREAM` | | |
-| M8 | The historical source assembles clean | | |
-| M9 | Execution to first trap, then to `ENDEX` | | |
-| M10 | First SNOBOL4 program | | |
+|     | Milestone                                  | Status               | Where             |
+|-----|--------------------------------------------|----------------------|-------------------|
+| M0  | Scanner                                    | **done** — `86a6d81` | `pkg/sil/scanner` |
+| M1  | Operand parser                             | **done** — `adbbae0` | `pkg/sil/parser`  |
+| M2  | The symbol gate                            | **done** — `c1a4ccc` | `pkg/sil/symtab`  |
+| M3  | Externals chosen; layout closes            | next                 |                   |
+| M4  | Instruction table and shape validation     | TODO                 |                   |
+| M5  | First vertical slice runs                  | TODO                 |                   |
+| M6  | Instruction batches by §7.5 classification | TODO                 |                   |
+| M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
+| M8  | The historical source assembles clean      | TODO                 |                   |
+| M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
+| M10 | First SNOBOL4 program                      | TODO                 |                   |
 
 The front end (M0–M2) is complete: the whole 6,580-line source scans, parses and resolves with no diagnostics, and the 37 undefined names it derives are exactly the machine-dependent contract. M3 is where machine-dependent choices start being hard to reverse.
 
