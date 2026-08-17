@@ -426,10 +426,13 @@ Struck from the risk register by the manual: `BRANCH LOC,PROC` (§6.15) and `PRO
 
 ## Files
 
+This section was the plan's sketch of what would be written. What was actually written is in `CLAUDE.md`, which is kept current; the list below is left as the plan made it, with the two entries that turned out differently marked.
+
 - `pkg/sil/types.go` — `am`, `descriptor`, `specifier` become `Cell`, `Core`, `CSTACK`/`OSTACK`, `Symbols`
 - `pkg/sil/macros.go` — the doc-comment-plus-method convention every instruction follows
 - new: scanner, operand parser, symbol table, instruction table, assembler, `Step`, `Host`
-- `pkg/sil/copyseg/{parms,mlink,mdata}.sil` — the machine-dependent segments; Go generator for the Appendix A syntax table contents still to come
+- `pkg/sil/copyseg/{parms,mlink,mdata}.sil` — the machine-dependent segments. ~~Go generator for the Appendix A syntax table contents still to come~~: it is `pkg/sil/syntab`, which holds the appendix verbatim and expands it at load time rather than generating SIL text; see M7.
+- Not foreseen: `pkg/fortran` (the format interpreter, risk 9), `engines/engines.go` (the `//go:embed`) and `cmd/sil` (the runner).
 - `AGENTS.md` — update "Agent Role" to match the chosen mode (M0)
 - `engines/sil-v3.11.sil` — read-only input. Lines 303, 2694, 5475, 6336, 6343, 6352, 6580 are the ones this plan leans on
 - `references/s4d58-sil-v3.11.pdf` — §5.2 branch points, §6.15/6.78/6.87/6.95/6.98 call model, §7.1 optional macros, §7.4 frequencies, §7.5 classification, §7.6 source format, Appendix A syntax tables
