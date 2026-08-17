@@ -34,7 +34,7 @@ import (
 
 // A place in core well away from the scratch descriptors, used as the
 // block these operations reach through.
-const blk = 12
+const blk = 24
 
 // descr reads the three descriptor fields, for comparing against a
 // figure.

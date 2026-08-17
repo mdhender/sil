@@ -53,7 +53,7 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
 | M4  | Instruction table and shape validation     | **done**             | `pkg/sil/op`      |
 | M5  | First vertical slice runs                  | **done**             | `pkg/sil`, `pkg/sil/asm` |
-| M6  | Instruction batches by §7.5 classification | in progress — 2 of 10 batches | `pkg/sil`        |
+| M6  | Instruction batches by §7.5 classification | in progress — 5 of 10 batches | `pkg/sil`        |
 | M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
 | M8  | The historical source assembles clean      | TODO                 |                   |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
@@ -122,6 +122,21 @@ Batches 1 and 2 are done, in `pkg/sil/descriptors.go`: `GETD` `GETDC` `PUTD` `PU
 Alongside the unit tests, `pkg/sil/asm/testdata/descriptors.sil` is a SIL program that checks itself: fifteen round trips and identities the document states, compared with `ACOMP`, ending with the number of the check that failed or zero. Two things it caught that a per-operation test would not have: a `MOVBLK` that copies from the title rather than past it moves the same data to the same place, so only §6.66 note 1 — "the descriptor at A1 is not altered" — distinguishes it.
 
 Two operations transfer to a label rather than faulting, and they are different labels: `POP` underflow goes to `INTR10` (§6.77 note 1, §7.3) and `PUSH` overflow to `OVER` (§6.80 note 1), which the source defines at line 5233 as `SETAC ERRTYP,21`.
+
+Batches 3, 4 and 5 follow in `pkg/sil/compare.go` and `pkg/sil/fields.go`: the comparisons `AEQL` `AEQLC` `AEQLIC` `CHKVAL` `DEQL` `LCOMP` `LEQLC` `LEXCMP` `TESTF` `TESTFI` `VCMPIC` `VEQL` `VEQLC`, the flag operations `SETF` `SETFI` `RESETF` `RSETFI`, and the value-field ones `INCRV` `MOVV` `PUTVC` `SETSIZ` `SETVA` `SETVC`. `RCOMP` is the only comparison left and waits for real numbers. `pkg/sil/asm/testdata/compare.sil` checks all of them the same way, with 37 checks that branch to `FAIL` on the arm the document says they must not take.
+
+**§6.53 is wrong about `LEXCMP` and the source proves it.** The prose reads "If C11...C1N1 < C21...C2M, transfer is to GTLOC ... if > ... LTLOC", which inverts the operand names. Eleven of the twelve `LEXCMP` sites give `GTLOC` and `LTLOC` the same target — §6.53 note 5 says that is the usual case, which is why the error survived — but `LGT` at line 4485 does not:
+
+```
+LGT    PROC    ,
+       ...
+       AEQLC   YPTR,0,,RETNUL      Null is less than anything
+       LEXCMP  XSP,YSP,RETNUL,FAIL,FAIL
+```
+
+`LGT(X,Y)` succeeds when X is lexically greater, and `RETNUL` is how a primitive succeeds, so `GTLOC` means `SPEC1` greater. Implemented that way, with the deviation recorded in the method's doc comment and checked by `compare.sil`.
+
+Flags are set and reset bitwise rather than by the addition §6.101 and §6.91 write, because their own note 1 -- "the other flags are left unchanged" -- and §3.1.2's "a set of bits that are individually tested, turned on, and turned off" require it: adding a flag already present would carry into the next one.
 
 **M7 — Syntax tables and `STREAM`.** `STREAM` (35 sites), `PLUGTB`/`CLERTB` (4+4), MDATA generated from Appendix A. Lower risk than it looks: §4.2 states only `SNABTB` is ever mutated, so tables are immutable data with one exception.
 *Exit:* a SIL program that plugs `SNABTB`, runs `STREAM`, and reproduces `ANY`/`BREAK`/`NOTANY`/`SPAN`.

@@ -173,6 +173,55 @@ func (s *VM) Step() error {
 // instruction table gives them.
 func (s *VM) execute(c Cell) error {
 	switch c.Op {
+	case op.AEQL:
+		s.AEQL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.AEQLC:
+		s.AEQLC(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.AEQLIC:
+		return s.AEQLIC(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.CHKVAL:
+		s.CHKVAL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4], c.Ops[5])
+	case op.DEQL:
+		s.DEQL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.LCOMP:
+		s.LCOMP(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.LEQLC:
+		s.LEQLC(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.LEXCMP:
+		s.LEXCMP(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.TESTF:
+		s.TESTF(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.TESTFI:
+		return s.TESTFI(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.VCMPIC:
+		return s.VCMPIC(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4], c.Ops[5])
+	case op.VEQL:
+		s.VEQL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.VEQLC:
+		s.VEQLC(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+
+	case op.RESETF:
+		s.RESETF(c.Ops[0], c.Ops[1])
+	case op.RSETFI:
+		return s.RSETFI(c.Ops[0], c.Ops[1])
+	case op.SETF:
+		s.SETF(c.Ops[0], c.Ops[1])
+	case op.SETFI:
+		return s.SETFI(c.Ops[0], c.Ops[1])
+
+	case op.INCRV:
+		s.INCRV(c.Ops[0], c.Ops[1])
+	case op.MOVV:
+		s.MOVV(c.Ops[0], c.Ops[1])
+	case op.PUTVC:
+		return s.PUTVC(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.SETSIZ:
+		return s.SETSIZ(c.Ops[0], c.Ops[1])
+	case op.SETVA:
+		s.SETVA(c.Ops[0], c.Ops[1])
+	case op.SETVC:
+		s.SETVC(c.Ops[0], c.Ops[1])
+
 	case op.ADJUST:
 		return s.ADJUST(c.Ops[0], c.Ops[1], c.Ops[2])
 	case op.BKSIZE:

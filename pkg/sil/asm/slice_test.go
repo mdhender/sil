@@ -267,8 +267,21 @@ func equal(a, b []int) bool {
 // its string needs -- compared with ACOMP. The program keeps the
 // number of the check it is about to make in WHICH and ends with it,
 // so a failure names itself instead of just being a wrong number.
-func TestDescriptorOperations(t *testing.T) {
-	src, err := os.ReadFile("testdata/descriptors.sil")
+func TestDescriptorOperations(t *testing.T) { selfChecking(t, "testdata/descriptors.sil") }
+
+// The comparison, flag and value-field batches of S4D58 7.5, the same
+// way: each check branches to FAIL on the arm the document says it
+// must not take. A comparison has nothing to inspect afterwards --
+// none of them alters anything -- so the branch is the only thing
+// there is to check, and a SIL program is a better place to check it
+// than a Go test that supplies its own idea of where the arms go.
+func TestComparisonOperations(t *testing.T) { selfChecking(t, "testdata/compare.sil") }
+
+// selfChecking runs a SIL program that ends with the number of the
+// check that failed, or zero.
+func selfChecking(t *testing.T, path string) {
+	t.Helper()
+	src, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,5 +296,5 @@ func TestDescriptorOperations(t *testing.T) {
 	if vm.Status != 0 {
 		t.Errorf("check %d failed\n%s", vm.Status, trace.String())
 	}
-	t.Logf("%d instructions, %d units of core", vm.Cycles, len(vm.Core))
+	t.Logf("%s: %d instructions, %d units of core", path, vm.Cycles, len(vm.Core))
 }

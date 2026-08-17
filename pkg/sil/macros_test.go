@@ -46,7 +46,9 @@ const (
 	d2    = 2  //
 	d3    = 3  //
 	spec1 = 4  // a specifier, two cells
-	str1  = 6  // the four characters it points into
+	spec2 = 6  // a second specifier
+	str1  = 8  // characters
+	str2  = 16 // more characters
 	stack = 40 // the system stack
 	core  = 64
 )

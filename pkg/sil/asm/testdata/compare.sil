@@ -1,0 +1,163 @@
+       TITLE   'Comparisons, flags and value fields'
+       COPY    PARMS
+*
+*      Each check branches to FAIL on the arm S4D58 says it must not
+*      take, and falls through on the arm it must.  WHICH carries the
+*      number of the check, so the run ends with the one that failed
+*      or with zero.
+*
+STSIZE EQU     8
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+*      6.8, 6.9, 6.10: address fields, direct, against a constant,
+*      and indirect.
+*
+       SETAC   WHICH,1
+       AEQL    ACL,CCL,FAIL
+       SETAC   WHICH,2
+       AEQL    ACL,BCL,,FAIL
+       SETAC   WHICH,3
+       AEQLC   ACL,1,FAIL
+       SETAC   WHICH,4
+       AEQLC   ACL,2,,FAIL
+       PUTAC   BLKPTR,DESCR,ACL     Put 1 in the block
+       SETAC   WHICH,5
+       AEQLIC  BLKPTR,DESCR,1,FAIL
+       SETAC   WHICH,6
+       AEQLIC  BLKPTR,DESCR,2,,FAIL
+*
+*      6.24: DEQL needs all three fields.
+*
+       SETAC   WHICH,7
+       DEQL    ACL,CCL,FAIL
+       SETAC   WHICH,8
+       DEQL    ACL,BCL,,FAIL
+*
+*      6.129, 6.130: value fields.
+*
+       SETAC   WHICH,9
+       VEQL    ACL,CCL,FAIL
+       SETAC   WHICH,10
+       VEQL    ACL,BCL,,FAIL
+       SETAC   WHICH,11
+       VEQLC   ACL,10,FAIL
+       SETAC   WHICH,12
+       VEQLC   ACL,11,,FAIL
+*
+*      6.51, 6.52: specifier lengths.
+*
+       SETAC   WHICH,13
+       LEQLC   ABCSP,3,FAIL
+       SETAC   WHICH,14
+       LEQLC   ABCSP,4,,FAIL
+       SETAC   WHICH,15
+       LCOMP   ABCASP,ABCSP,,FAIL,FAIL
+       SETAC   WHICH,16
+       LCOMP   ABCSP,ABCSP,FAIL,,FAIL
+       SETAC   WHICH,17
+       LCOMP   ABCSP,ABCASP,FAIL,FAIL
+*
+*      6.53: lexical order.  GTLOC is taken when SPEC1 is the
+*      greater, which is what LGT at line 4485 of the SNOBOL4 source
+*      requires and the opposite of what 6.53's prose says.
+*
+       SETAC   WHICH,18
+       LEXCMP  ABCSP,ABDSP,FAIL,FAIL ABC < ABD
+       SETAC   WHICH,19
+       LEXCMP  ABDSP,ABCSP,,FAIL,FAIL ABD > ABC
+       SETAC   WHICH,20
+       LEXCMP  ABCSP,ABCSP,FAIL,,FAIL equal
+       SETAC   WHICH,21
+       LEXCMP  ABCSP,ABCASP,FAIL,FAIL 6.53 note 2
+*
+*      6.18: CHKVAL compares L+I2 with I1.
+*
+       SETAC   XCL,5
+       SETAC   YCL,2
+       SETAC   WHICH,22
+       CHKVAL  XCL,YCL,ABCSP,FAIL,,FAIL 3+2 = 5
+*
+*      6.121, 6.122: flag tests, direct and indirect.
+*
+       SETAC   WHICH,23
+       TESTF   FLGCL,MARK,FAIL
+       SETAC   WHICH,24
+       TESTF   FLGCL,STTL,,FAIL
+       SETAC   WHICH,25
+       TESTFI  BLKPTR,TTL,FAIL
+       SETAC   WHICH,26
+       TESTFI  BLKPTR,STTL,,FAIL
+*
+*      6.128: VCMPIC reads a value field indirectly.
+*
+       SETVC   XCL,LEN*DESCR
+       SETAC   WHICH,27
+       VCMPIC  BLKPTR,0,XCL,FAIL,,FAIL
+*
+*      6.101, 6.91, 6.102, 6.96: setting and resetting a flag.
+*
+       SETF    ZCL,MARK
+       SETAC   WHICH,28
+       TESTF   ZCL,MARK,FAIL
+       RESETF  ZCL,MARK
+       SETAC   WHICH,29
+       TESTF   ZCL,MARK,,FAIL
+       SETFI   WPTR,MARK
+       SETAC   WHICH,30
+       TESTFI  WPTR,MARK,FAIL
+       RSETFI  WPTR,MARK
+       SETAC   WHICH,31
+       TESTFI  WPTR,MARK,,FAIL
+*
+*      6.107, 6.45, 6.69, 6.106, 6.86, 6.104: the value field.
+*
+       SETVC   XCL,7
+       SETAC   WHICH,32
+       VEQLC   XCL,7,FAIL
+       INCRV   XCL,3
+       SETAC   WHICH,33
+       VEQLC   XCL,10,FAIL
+       MOVV    YCL,XCL
+       SETAC   WHICH,34
+       VEQL    YCL,XCL,FAIL
+       SETVA   XCL,ACL              ACL addresses 1
+       SETAC   WHICH,35
+       VEQLC   XCL,1,FAIL
+       SETVC   XCL,9
+       PUTVC   BLKPTR,DESCR,XCL
+       GETDC   YCL,BLKPTR,DESCR
+       SETAC   WHICH,36
+       VEQL    YCL,XCL,FAIL
+       SETSIZ  BLKPTR,ACL           The title now says 1
+       GETSIZ  YCL,BLKPTR
+       SETAC   WHICH,37
+       ACOMP   YCL,ACL,FAIL,,FAIL
+*
+       SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+LEN    EQU     3
+ACL    DESCR   1,0,10
+BCL    DESCR   2,0,20
+CCL    DESCR   1,0,10               The same descriptor as ACL
+FLGCL  DESCR   0,TTL+MARK,0
+WHICH  DESCR   0,0,0
+XCL    DESCR   0,0,0
+YCL    DESCR   0,0,0
+ZCL    DESCR   0,0,0
+WPTR   DESCR   SCRAT,0,0
+SCRAT  DESCR   0,0,0
+BLKPTR DESCR   BLOCK,0,0
+BLOCK  DESCR   BLOCK,TTL+MARK,LEN*DESCR
+       ARRAY   LEN
+ABCSP  STRING  'ABC'
+ABDSP  STRING  'ABD'
+ABCASP STRING  'ABCA'
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR
+       ARRAY   STSIZE
+       END

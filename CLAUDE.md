@@ -25,7 +25,7 @@ Run fmt/vet/test before considering a change complete.
 
 ## State of the code
 
-`PLAN.md` holds the milestone table and is the authority on what is done. As of M6 batch 2 a SIL program goes from source through the assembler into the machine and runs. Thirty-one of the 119 operations are implemented; the rest fault with their own name.
+`PLAN.md` holds the milestone table and is the authority on what is done. As of M6 batch 5 a SIL program goes from source through the assembler into the machine and runs. Fifty-four of the 119 operations are implemented; the rest fault with their own name.
 
 - `pkg/sil/diag` — accumulated diagnostics with source locations. Every stage appends and keeps going.
 - `pkg/sil/scanner` — columns to fields (S4D58 §7.6). Knows no operations.
@@ -34,7 +34,7 @@ Run fmt/vet/test before considering a change complete.
 - `pkg/sil/symtab` — definitions and references; closes the reference graph without any operation knowledge.
 - `pkg/sil/op` — the instruction table: all 131 operations of §6 with their operand signatures, §7.5 classification, size shape and section citation. One table; `Lookup`, `String`, the shape checker and the location counter all read it. Do not add a parallel enum, stringer, or lookup file.
 - `pkg/sil/layout` — the location counter and symbol values, with the relocatable/absolute discipline. Reads sizes from `op`.
-- `pkg/sil` — the machine. `Cell` and `Core` (`cell.go`), `VM`/`Step`/`Run` (`vm.go`), the `Host` boundary (`host.go`), and one method per operation (`macros.go` for the vertical slice, `descriptors.go` for §7.5's descriptor and address-field groups).
+- `pkg/sil` — the machine. `Cell` and `Core` (`cell.go`), `VM`/`Step`/`Run` (`vm.go`), the `Host` boundary (`host.go`), and one method per operation (`macros.go` for the vertical slice, `descriptors.go` for §7.5's descriptor and address-field groups, `compare.go` for the comparisons, `fields.go` for the flag and value-field groups).
 - `pkg/sil/asm` — `Assemble(file, src, Options) (*sil.VM, diag.List)`: the whole front end in one call, then emission into core. There is no image format and none is wanted yet.
 - `cmd/sil` — the runner entry point; empty.
 - `internal/corpus` — locates the historical source for tests and holds the counts they assert. Corpus tests skip when it is absent; **a skip is not a pass**.
