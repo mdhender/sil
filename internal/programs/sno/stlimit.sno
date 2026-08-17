@@ -1,0 +1,13 @@
+*  stlimit.sno -- a loop that never ends, stopped by &STLIMIT.
+*  ERRORS: the loop has no way out, and &STLIMIT is what stops it.
+*  Error 22. This is the one runaway in the set that the SNOBOL4
+*  system handles itself: the machine never notices anything wrong,
+*  and no instruction bound is involved. Compare noend.sno, which the
+*  system cannot stop because it never finishes reading the deck.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+-LIST
+        &STLIMIT = 20
+        N = 0
+LOOP    N = N + 1
+        OUTPUT = N                              :(LOOP)
+END

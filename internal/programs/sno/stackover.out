@@ -1,0 +1,9 @@
+        -LIST
+                DEFINE('DOWN(N)')                        :(DOWN.END)                     1
+        DOWN    DOWN = DOWN(N + 1)                       :(RETURN)                       2
+        DOWN.END                                                                         3
+                OUTPUT = 'going down'                                                    4
+                OUTPUT = DOWN(1)                                                         5
+        END                                                                              6
+going down
+STACK OVERFLOW

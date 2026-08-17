@@ -1,0 +1,22 @@
+*  stackover.sno -- recurse until the interpreter stack runs out.
+*  ERRORS: DOWN calls itself and never returns. Error 21, at sixty-six
+*  levels. STSIZE is 1000 descriptors, which the historical source
+*  chose at line 253 of engines/sil-v3.11.sil, and how many levels
+*  that buys depends on the frame: this function takes one argument
+*  and gets sixty-six, while A(3,0) in ackermann.sno takes two and
+*  runs out at forty-two.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  It is the failure -stack exists to move. Run it by hand with a
+*  bigger one and it goes further before it stops:
+*
+*      sil -stack 35k stackover.sno
+*
+*  and ackermann3.sno is the program that does that on purpose.
+-LIST
+        DEFINE('DOWN(N)')                        :(DOWN.END)
+DOWN    DOWN = DOWN(N + 1)                       :(RETURN)
+DOWN.END
+        OUTPUT = 'going down'
+        OUTPUT = DOWN(1)
+END

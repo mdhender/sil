@@ -1,0 +1,30 @@
+*  charcode.sno -- a character to its code and back again.
+*  PENDING: ALPHA is never filled in, so &ALPHABET reads as 256 blanks
+*  and neither of these functions can work. S4D58 3.6 says MDATA holds
+*  "ALPHA, a string that consists of all characters arranged in the
+*  order of their internal numerical representation", and
+*  pkg/sil/copyseg/mdata.sil declares it with BUFFER, which 6.17 says
+*  assembles blanks. AMPST, COLSTR and QTSTR are declared the same way
+*  and have the same problem. Clear this line when they are filled.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Version 3.11 has no CHAR or ORD, and should not need them:
+*  &ALPHABET is every character of the host set in collating order, so
+*  a code is a position in it. TAB(N) LEN(1) reads one out; BREAK(C)
+*  with the cursor operator puts one back. What this prints is
+*  therefore a fact about the host character set, which is ASCII here.
+        &ANCHOR = 1
+        DEFINE('CHAR(N)')                        :(CHAR.END)
+CHAR    &ALPHABET TAB(N) LEN(1) . CHAR           :S(RETURN)F(FRETURN)
+CHAR.END
+        DEFINE('ORD(C)')                         :(ORD.END)
+ORD     &ALPHABET BREAK(C) @ORD                  :S(RETURN)F(FRETURN)
+ORD.END
+*
+        OUTPUT = 'A is ' ORD('A')
+        OUTPUT = 'a is ' ORD('a')
+        OUTPUT = '0 is ' ORD('0')
+        OUTPUT = '65 is ' CHAR(65)
+        OUTPUT = '97 is ' CHAR(97)
+        OUTPUT = 'round trip: ' CHAR(ORD('Z'))
+END

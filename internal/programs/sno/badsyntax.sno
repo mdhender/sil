@@ -1,0 +1,16 @@
+*  badsyntax.sno -- a statement the compiler cannot read.
+*  ERRORS: an opening parenthesis with nothing to close it. The
+*  compiler reports it as an erroneous or missing break character,
+*  which is the syntax tables of Appendix A saying they ran off the
+*  end of what they were reading rather than off the end of the card.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Every program in this set is compiled under a -UNLIST control card,
+*  because the listing shares the printer with the program's output.
+*  An invalid one turns it back on for itself, below, because the
+*  listing is where the compiler names the card it could not read --
+*  and after the header, so that the golden holds statements and not
+*  this paragraph.
+-LIST
+        OUTPUT = (1 + 2
+END

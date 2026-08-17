@@ -1,0 +1,26 @@
+*  bottles.sno -- ninety-nine bottles of beer on the wall.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Here for the volume: four hundred lines out through STPRNT, which
+*  is more printing than the rest of this set together, and the
+*  singular verses to keep the counting honest.
+*
+*  The statement field of a card is columns 1 to 72 and no wider, so
+*  the verse is built up in pieces rather than written out.
+        DEFINE('BOTTLES(N)')                     :(BOTTLES.END)
+BOTTLES BOTTLES = EQ(N,0) 'no more bottles'      :S(RETURN)
+        BOTTLES = EQ(N,1) '1 bottle'             :S(RETURN)
+        BOTTLES = N ' bottles'                   :(RETURN)
+BOTTLES.END
+*
+        WALL = ' of beer on the wall'
+        BEER = ' of beer'
+        N = 99
+VERSE   THIS = BOTTLES(N)
+        NEXT = BOTTLES(N - 1)
+        OUTPUT = THIS WALL ', ' THIS BEER '.'
+        OUTPUT = 'Take one down and pass it around, '
++                NEXT WALL '.'
+        OUTPUT =
+        N = GT(N,1) N - 1                        :S(VERSE)
+END

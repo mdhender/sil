@@ -1,0 +1,13 @@
+*  undefined.sno -- call a function that was never defined.
+*  ERRORS: NOSUCH is not a function of this SNOBOL4 and no DEFINE
+*  makes it one, so the compiler accepts the call and the interpreter
+*  finds out at run time. Error 5.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  The program compiles clean, which is the point: a name is only a
+*  name until something asks it to be a function.
+-LIST
+        OUTPUT = 'before'
+        OUTPUT = NOSUCH(1)
+        OUTPUT = 'after'
+END

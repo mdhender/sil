@@ -1,0 +1,21 @@
+*  roman.sno -- write integers as Roman numerals.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Table driven and iterative: two parallel lists, taken apart with
+*  BREAK and SPAN, subtracting the largest value that still fits. The
+*  widest reach in this set -- a defined function, pattern matching
+*  with replacement, and the goto field on both arms.
+        &ANCHOR = 1
+        DEFINE('ROMAN(N)VALS,SYMS,V,S')          :(ROMAN.END)
+ROMAN   VALS = '1000 900 500 400 100 90 50 40 10 9 5 4 1 '
+        SYMS = 'M CM D CD C XC L XL X IX V IV I '
+ROMAN.1 VALS BREAK(' ') . V SPAN(' ') =          :F(RETURN)
+        SYMS BREAK(' ') . S SPAN(' ') =
+ROMAN.2 N = GE(N,V) N - V                        :F(ROMAN.1)
+        ROMAN = ROMAN S                          :(ROMAN.2)
+ROMAN.END
+*
+        LIST = '1 4 9 14 40 90 400 1666 1999 2008 3999 '
+SHOW    LIST BREAK(' ') . N SPAN(' ') =          :F(END)
+        OUTPUT = N ' = ' ROMAN(N)                :(SHOW)
+END

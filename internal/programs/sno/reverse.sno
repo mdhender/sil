@@ -1,0 +1,18 @@
+*  reverse.sno -- turn a string back to front.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Version 3.11 has no REVERSE, so this is one, written the way the
+*  language gives you: take a character off the front by matching and
+*  replacing it with nothing, and put it on the front of the answer.
+*  Recursion by way of the goto field rather than by calling.
+        &ANCHOR = 1
+        DEFINE('REVERSE(S)C')                    :(REVERSE.END)
+REVERSE S LEN(1) . C =                           :F(RETURN)
+        REVERSE = C REVERSE                      :(REVERSE)
+REVERSE.END
+*
+        OUTPUT = REVERSE('asdf')
+        OUTPUT = REVERSE('Hello world!')
+        OUTPUT = REVERSE(REVERSE('a palindrome this is not'))
+        OUTPUT = '[' REVERSE('') ']'
+END

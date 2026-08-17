@@ -1,0 +1,9 @@
+*  badgoto.sno -- branch to a label that is not there.
+*  ERRORS: NOWHERE is not a label of this program. Error 24, and it is
+*  found at run time rather than at compile time -- the line before it
+*  prints first, which is how you can tell.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+-LIST
+        OUTPUT = 'this line runs'               :(NOWHERE)
+        OUTPUT = 'this line does not'
+END

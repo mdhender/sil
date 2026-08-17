@@ -1,0 +1,17 @@
+*  fib.sno -- the Fibonacci numbers as far as this machine goes.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Stopped at F(34) on purpose. SIZLIM here is 16777215 -- a 24-bit
+*  value field, chosen in pkg/sil/copyseg/parms.sil -- and F(36) is
+*  14930352, so F(37) is the first one this machine cannot hold. A
+*  program that runs to F(40) elsewhere stops with an arithmetic error
+*  here, and that is a property of the port and not of the program.
+        A = 0
+        B = 1
+        N = 0
+LOOP    OUTPUT = 'F(' N ') = ' A
+        T = A + B
+        A = B
+        B = T
+        N = LT(N,34) N + 1             :S(LOOP)
+END

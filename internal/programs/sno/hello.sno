@@ -1,0 +1,8 @@
+*  hello.sno -- print one line of text.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  The smallest program that reaches the printer, and the baseline
+*  every other timing here is read against: what it measures is the
+*  cost of compiling and starting, not of computing.
+        OUTPUT = 'Hello world!'
+END

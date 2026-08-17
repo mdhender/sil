@@ -1,0 +1,7 @@
+# RosettaCode's contributions are under CC BY-SA, which is not the
+# licence this repository carries, so the programs are fetched rather
+# than committed. See README.md, and internal/rosetta for what each
+# task's output is held to.
+*
+!.gitignore
+!README.md

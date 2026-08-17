@@ -1,0 +1,10 @@
+*  countdown.sno -- count from ten down to zero.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  A loop and a comparison, which is the smallest thing that runs the
+*  interpreter's goto field round more than once.
+        N = 10
+LOOP    OUTPUT = N
+        N = N - 1
+        GE(N,0)                        :S(LOOP)
+END

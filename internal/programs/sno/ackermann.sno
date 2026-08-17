@@ -1,0 +1,26 @@
+*  ackermann.sno -- the Ackermann function, as far as the stack goes.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Three statements, which is what the definition has and there is no
+*  other way to write it. What it is here for is depth: this is the
+*  program that leans on the call model rather than on arithmetic.
+*
+*  It stops at m = 2 because m = 3 will not fit. STSIZE is 1000
+*  descriptors -- the historical source's own choice, at line 253 of
+*  engines/sil-v3.11.sil -- and A(3,0) runs the interpreter stack out
+*  at about forty levels of nesting. That is faithful, not a limit of
+*  this port, and it is the deepest recursion anything here reaches.
+        DEFINE('ACK(M,N)')                       :(ACK.END)
+ACK     ACK = EQ(M,0) N + 1                      :S(RETURN)
+        ACK = EQ(N,0) ACK(M - 1,1)               :S(RETURN)
+        ACK = ACK(M - 1,ACK(M,N - 1))            :(RETURN)
+ACK.END
+*
+        M = 0
+ROW     LINE = 'A(' M ',n) ='
+        N = 0
+COL     LINE = LINE ' ' ACK(M,N)
+        N = LT(N,4) N + 1                        :S(COL)
+        OUTPUT = LINE
+        M = LT(M,2) M + 1                        :S(ROW)
+END

@@ -1,0 +1,15 @@
+*  strcase.sno -- upper case, lower case, and swapped.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Version 3.11 has no &UCASE or &LCASE -- they came later -- so the
+*  two alphabets are written out and REPLACE does the work. Swapping
+*  is one call, on the pair of alphabets concatenated each way round,
+*  which is the whole reason REPLACE takes strings and not tables.
+        LOWER = 'abcdefghijklmnopqrstuvwxyz'
+        UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        S = 'alphaBETA'
+        OUTPUT = S
+        OUTPUT = REPLACE(S,UPPER,LOWER)
+        OUTPUT = REPLACE(S,LOWER,UPPER)
+        OUTPUT = REPLACE(S,LOWER UPPER,UPPER LOWER)
+END

@@ -1,0 +1,22 @@
+*  ackermann3.sno -- Ackermann at m = 3, which needs a bigger stack.
+*  STACK: 35000
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  ackermann.sno stops at m = 2 because A(3,0) runs the interpreter
+*  stack out at about forty levels. This is the same function with
+*  STSIZE raised from the thousand descriptors the historical source
+*  chose to thirty-five thousand, which is what -stack does and the
+*  only reason this program is separate from that one.
+*
+*  It stops at n = 3 for a different reason: A(3,4) is 125 and takes
+*  more than the default &STLIMIT of statements to say so.
+        DEFINE('ACK(M,N)')                       :(ACK.END)
+ACK     ACK = EQ(M,0) N + 1                      :S(RETURN)
+        ACK = EQ(N,0) ACK(M - 1,1)               :S(RETURN)
+        ACK = ACK(M - 1,ACK(M,N - 1))            :(RETURN)
+ACK.END
+*
+        N = 0
+COL     OUTPUT = 'A(3,' N ') = ' ACK(3,N)
+        N = LT(N,3) N + 1                        :S(COL)
+END

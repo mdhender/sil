@@ -1,0 +1,15 @@
+*  hanoi.sno -- move a tower of four disks.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Recursion that branches twice on the way down, so the stack holds a
+*  frame per disk and the order of the moves is the whole of the
+*  answer. Fifteen moves for four disks.
+        DEFINE('HANOI(N,FROM,TO,VIA)')           :(HANOI.END)
+HANOI   EQ(N,0)                                  :S(RETURN)
+        HANOI(N - 1,FROM,VIA,TO)
+        OUTPUT = 'Move disk ' N ' from ' FROM ' to ' TO
+        HANOI(N - 1,VIA,TO,FROM)                 :(RETURN)
+HANOI.END
+*
+        HANOI(4,'A','C','B')
+END

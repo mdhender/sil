@@ -1,0 +1,4 @@
+# The .gitignore at the root excludes *.out, meaning a.out. These are
+# golden files -- what each program beside them is supposed to print --
+# and the whole set is useless if they are not in the repository.
+!*.out

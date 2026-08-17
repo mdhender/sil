@@ -1,0 +1,23 @@
+*  sieve.sno -- the primes below a hundred, by Eratosthenes.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  An array sieve rather than a string one: crossing off is a
+*  subscripted assignment, so the inner loop is arithmetic and the
+*  node group and nothing else. The heaviest arithmetic in this set,
+*  and the one worth timing.
+        LIMIT = 100
+        P = ARRAY(LIMIT,1)
+        I = 1
+OUTER   I = LT(I,LIMIT) I + 1          :F(SHOW)
+        EQ(P<I>,1)                     :F(OUTER)
+        J = I * I
+INNER   GT(J,LIMIT)                    :S(OUTER)
+        P<J> = 0
+        J = J + I                      :(INNER)
+*
+SHOW    I = 1
+        LINE =
+SLOOP   I = LT(I,LIMIT) I + 1          :F(DONE)
+        LINE = EQ(P<I>,1) LINE I ' '   :(SLOOP)
+DONE    OUTPUT = TRIM(LINE)
+END

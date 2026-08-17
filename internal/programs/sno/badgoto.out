@@ -1,0 +1,6 @@
+        -LIST
+                OUTPUT = 'this line runs'               :(NOWHERE)                       1
+                OUTPUT = 'this line does not'                                            2
+        END                                                                              3
+this line runs
+UNDEFINED OR ERRONEOUS GOTO

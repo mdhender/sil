@@ -1,0 +1,15 @@
+*  fizzbuzz.sno -- one to a hundred, Fizz for three, Buzz for five.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Written on the failure of a statement rather than on branches: an
+*  assignment whose right side contains a predicate that fails does
+*  not happen, so LINE keeps what it had. REMDR, concatenation and a
+*  hundred turns of the loop.
+        N = 0
+LOOP    N = LT(N,100) N + 1            :F(END)
+        LINE =
+        LINE = EQ(REMDR(N,3),0) 'Fizz'
+        LINE = EQ(REMDR(N,5),0) LINE 'Buzz'
+        LINE = IDENT(LINE) N
+        OUTPUT = LINE                  :(LOOP)
+END

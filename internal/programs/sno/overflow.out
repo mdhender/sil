@@ -1,0 +1,7 @@
+        -LIST
+                A = 8000000                                                              1
+                OUTPUT = A + A                                                           2
+                OUTPUT = A + A + A                                                       3
+        END                                                                              4
+16000000
+ERROR IN ARITHMETIC OPERATION

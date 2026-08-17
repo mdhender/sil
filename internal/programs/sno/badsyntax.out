@@ -1,0 +1,7 @@
+        -LIST
+                OUTPUT = (1 + 2                                                          1
+
+*** ERRONEOUS OR MISSING BREAK CHARACTER
+
+        END                                                                              2
+EXECUTION OF STATEMENT WITH COMPILATION ERROR

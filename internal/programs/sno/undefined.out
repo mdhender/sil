@@ -1,0 +1,7 @@
+        -LIST
+                OUTPUT = 'before'                                                        1
+                OUTPUT = NOSUCH(1)                                                       2
+                OUTPUT = 'after'                                                         3
+        END                                                                              4
+before
+UNDEFINED FUNCTION OR OPERATION

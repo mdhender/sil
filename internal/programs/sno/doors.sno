@@ -1,0 +1,20 @@
+*  doors.sno -- a hundred doors, a hundred passes.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  Reaches ARRAY and subscripting, which is the node group seen from
+*  the source language. The answer is the perfect squares, and the
+*  program is written not to know that.
+        DOORS = ARRAY(100,0)
+        PASS = 0
+OUTER   PASS = LT(PASS,100) PASS + 1   :F(SHOW)
+        D = PASS
+INNER   GT(D,100)                      :S(OUTER)
+        DOORS<D> = 1 - DOORS<D>
+        D = D + PASS                   :(INNER)
+*
+SHOW    D = 0
+        LINE =
+SLOOP   D = LT(D,100) D + 1            :F(DONE)
+        LINE = EQ(DOORS<D>,1) LINE D ' '        :(SLOOP)
+DONE    OUTPUT = 'Open doors: ' TRIM(LINE)
+END

@@ -1,0 +1,14 @@
+*  noend.sno -- a deck with no END card.
+*  RUNAWAY: the compiler reads cards until it finds END, and there
+*  is not one. On end-of-file the card-reading loop in the SIL source
+*  branches to itself --
+*
+*      FORRUR STREAD  INBFSP,UNIT,FORRUR,COMP5
+*
+*  where the third operand is STREAD's EOF branch (S4D58 6.115) and it
+*  is this instruction's own label -- so it reads for ever. A deck
+*  without an END card hung the original too. Nothing stops this but
+*  the instruction bound, which reports a *sil.Bound rather than a
+*  fault, because the machine is working exactly as written.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+        OUTPUT = 'this never gets compiled'

@@ -1,0 +1,17 @@
+*  empty.sno -- the null string, assigned and tested.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+*
+*  An assignment with nothing on the right gives the null string, and
+*  IDENT and DIFFER are how you ask. Both are written each time round;
+*  the one that does not apply fails, and a statement that fails
+*  prints nothing, so the output is what was true.
+        S =
+        OUTPUT = IDENT(S) 'null string: empty'
+        OUTPUT = DIFFER(S) 'null string: not empty'
+        OUTPUT = 'its size is ' SIZE(S)
+*
+        S = 'x'
+        OUTPUT = IDENT(S) 'one character: empty'
+        OUTPUT = DIFFER(S) 'one character: not empty'
+        OUTPUT = 'its size is ' SIZE(S)
+END

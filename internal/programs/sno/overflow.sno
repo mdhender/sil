@@ -1,0 +1,12 @@
+*  overflow.sno -- add past the largest integer this machine has.
+*  ERRORS: SIZLIM is 16777215 here -- a 24-bit value field, chosen in
+*  pkg/sil/copyseg/parms.sil -- so the second sum has nowhere to go.
+*  ADDSIB fails, and the SNOBOL4 system turns that into error 2. On a
+*  machine whose value field is wider this program prints two lines
+*  and stops normally, which is what makes it a test of the port.
+*  Part of github.com/mdhender/sil. BSD 2-Clause; see LICENSE.
+-LIST
+        A = 8000000
+        OUTPUT = A + A
+        OUTPUT = A + A + A
+END
