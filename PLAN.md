@@ -1,5 +1,19 @@
 # SIL: build order and first milestones
 
+| Milestone | Status |
+|-----------|--------|
+| M0        | TODO   |
+| M1        | TODO   |
+| M2        | TODO   |
+| M3        | TODO   |
+| M4        | TODO   |
+| M5        | TODO   |
+| M6        | TODO   |
+| M7        | TODO   |
+| M8        | TODO   |
+| M9        | TODO   |
+| M10       | TODO   |
+
 ## Context
 
 `mdhender/sil` aims to run the historical Macro SNOBOL4 implementation by implementing the machine it was written for — SIL — rather than reimplementing SNOBOL4 in Go. The repo is currently a skeleton: descriptor/specifier types transcribed from S4D58 §3, two implemented instructions (`ACOMP`, `ACOMPC`), and an empty `main`.
@@ -22,18 +36,18 @@ Build the parser and symbol resolver before any instruction semantics, then the 
 
 Verified directly against the source and the manual during planning:
 
-| Claim | Status |
-|---|---|
-| 131 mnemonics = 119 instructions + 12 directives; 4,832 statements; 1,624 labels, zero duplicates | Confirmed; S4D58 §7.4's own occurrence table matches the census exactly |
-| Columns: label 1–6, blank 7, opcode 8–13, blank 14–15, operand 16+ | §7.6. Operand field ends at first blank/tab **not inside quotes** |
-| `BRANCH LOC,PROC` needs no linkage restore | §6.15 + all 21 sites target `SCNR`. S/360 base-register artifact; **hard part removed** |
-| `PROC ,` vs `PROC name` needs no frame state | §6.78 note 2: *"has no functional use and may be implemented as LHERE"*; **hard part removed** |
-| `RCALL`/`RRTURN` layout | §6.87/§6.95 print it verbatim (see below); maclo's `GOTBL` is **not** the right model |
-| `*` must bind tighter than `+`/`-` | Exactly one site: `sil-v3.11.sil:5475` `OBEND DESCR OBLIST+DESCR*OBOFF,0,0`, where `OBOFF`=254 and `OBLIST` is relocatable. Left-to-right silently corrupts a bin-list bound |
-| Unary minus exists | `sil-v3.11.sil:2694` and `:2706` — `GETAC TVAL,PDLPTR,-2*DESCR` |
-| ~30 instructions are optional | §7.1 lists them with the feature each disables, so **first-cut surface is ~89, not 119** |
-| Syntax tables are specified | Appendix A defines all 25 in a `BEGIN/FOR/ELSE/END` language; §4.2 recommends generating them mechanically |
-| Faults branch into the program | §6.77 note 1 and §7.3: transfer to `INTR10`, never a Go error |
+| Claim                                                                                             | Status                                                                                                                                                                       |
+|---------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 131 mnemonics = 119 instructions + 12 directives; 4,832 statements; 1,624 labels, zero duplicates | Confirmed; S4D58 §7.4's own occurrence table matches the census exactly                                                                                                      |
+| Columns: label 1–6, blank 7, opcode 8–13, blank 14–15, operand 16+                                | §7.6. Operand field ends at first blank/tab **not inside quotes**                                                                                                            |
+| `BRANCH LOC,PROC` needs no linkage restore                                                        | §6.15 + all 21 sites target `SCNR`. S/360 base-register artifact; **hard part removed**                                                                                      |
+| `PROC ,` vs `PROC name` needs no frame state                                                      | §6.78 note 2: *"has no functional use and may be implemented as LHERE"*; **hard part removed**                                                                               |
+| `RCALL`/`RRTURN` layout                                                                           | §6.87/§6.95 print it verbatim (see below); maclo's `GOTBL` is **not** the right model                                                                                        |
+| `*` must bind tighter than `+`/`-`                                                                | Exactly one site: `sil-v3.11.sil:5475` `OBEND DESCR OBLIST+DESCR*OBOFF,0,0`, where `OBOFF`=254 and `OBLIST` is relocatable. Left-to-right silently corrupts a bin-list bound |
+| Unary minus exists                                                                                | `sil-v3.11.sil:2694` and `:2706` — `GETAC TVAL,PDLPTR,-2*DESCR`                                                                                                              |
+| ~30 instructions are optional                                                                     | §7.1 lists them with the feature each disables, so **first-cut surface is ~89, not 119**                                                                                     |
+| Syntax tables are specified                                                                       | Appendix A defines all 25 in a `BEGIN/FOR/ELSE/END` language; §4.2 recommends generating them mechanically                                                                   |
+| Faults branch into the program                                                                    | §6.77 note 1 and §7.3: transfer to `INTR10`, never a Go error                                                                                                                |
 
 §7.4 also gives execution-time percentages, which set the implementation priority: `RCALL` 8.9%, `GETD` 7.4%, `RRTURN` 6.2%, `INCRA` 5.6%, `LOCAPV` 5.2%, `GETDC` 5.0%, `POP` 4.3%, `AEQLC` 3.6%, `PUSH` 3.1%, `PUTDC` 3.1%.
 
@@ -43,10 +57,30 @@ Note the file we have is 6,580 lines with the columns 73–80 sequence field str
 
 Each exit criterion is mechanically checkable. M0–M2 involve zero instruction semantics.
 
+A milestone is **done** when its exit criterion is checked by a test that *ran* — the whole-source tests skip when `engines/sil-v3.11.sil` is absent, and a skip is not a pass.
+
+| | Milestone | Status | Where |
+|---|---|---|---|
+| M0 | Scanner | **done** — `86a6d81` | `pkg/sil/scanner` |
+| M1 | Operand parser | **done** — `adbbae0` | `pkg/sil/parser` |
+| M2 | The symbol gate | **done** — `c1a4ccc` | `pkg/sil/symtab` |
+| M3 | Externals chosen; layout closes | next | |
+| M4 | Instruction table and shape validation | | |
+| M5 | First vertical slice runs | | |
+| M6 | Instruction batches by §7.5 classification | | |
+| M7 | Syntax tables and `STREAM` | | |
+| M8 | The historical source assembles clean | | |
+| M9 | Execution to first trap, then to `ENDEX` | | |
+| M10 | First SNOBOL4 program | | |
+
+The front end (M0–M2) is complete: the whole 6,580-line source scans, parses and resolves with no diagnostics, and the 37 undefined names it derives are exactly the machine-dependent contract. M3 is where machine-dependent choices start being hard to reverse.
+
+Two measurements in this plan were taken from an early census and turned out to be wrong once a real parse existed. The source contains **unary minus** (`GETAC TVAL,PDLPTR,-2*DESCR`, lines 2694 and 2706), and **536** statements carry null operands rather than 668 — the difference is 123 lone-comma statements, which S4D58 7.6 defines as *no operands* rather than empty ones, plus 9 whose only nulls sit inside parenthesised lists.
+
 **M0 — Scanner.** Split every line into `{Line, Label, Op, Operand, Comment}` per §7.6, operand terminated at the first unquoted blank/tab. Update `AGENTS.md`'s Agent Role section to match the chosen mode.
 *Exit:* 1,748 comment lines; 4,832 statements; 1,624 distinct labels, zero duplicates; every label matches `^[A-Z][A-Z0-9]{0,5}$`; re-joining the fields reproduces each line byte-for-byte.
 
-**M1 — Operand parser.** `operandlist := item (',' item)*`; `item := ε | expr | '(' [item] (',' [item])* ')' | quoted`; `expr` with unary minus and `*` binding tighter than `+`/`-`. Nulls first-class (668 empty slots); parens never nest.
+**M1 — Operand parser.** `operandlist := item (',' item)*`; `item := ε | expr | '(' [item] (',' [item])* ')' | quoted`; `expr` with unary minus and `*` binding tighter than `+`/`-`. Nulls first-class (592 of them, across 536 statements); parens never nest.
 *Exit:* all 4,832 parse; max top-level arity 6; max paren depth 1; a unit test pins `OBLIST+DESCR*OBOFF` as `OBLIST+(DESCR*OBOFF)`.
 
 **M2 — The symbol gate.** Accumulate every identifier outside a quoted literal as a reference, every label field as a definition, resolve, report undefined *accumulated* (not first-error).
