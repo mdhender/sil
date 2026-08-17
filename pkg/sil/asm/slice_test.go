@@ -257,3 +257,31 @@ func equal(a, b []int) bool {
 	}
 	return true
 }
+
+// The descriptor and address-field batches of S4D58 7.5, as a SIL
+// program that checks itself.
+//
+// Every check is a round trip or an identity the document states --
+// what PUSH puts on the stack POP takes off, what PUTDC writes GETDC
+// reads, a string structure is one descriptor larger than the storage
+// its string needs -- compared with ACOMP. The program keeps the
+// number of the check it is about to make in WHICH and ends with it,
+// so a failure names itself instead of just being a wrong number.
+func TestDescriptorOperations(t *testing.T) {
+	src, err := os.ReadFile("testdata/descriptors.sil")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var trace bytes.Buffer
+	vm := assemble(t, src, asm.Options{Trace: &trace})
+	vm.MaxCycles = 1000
+
+	if err := vm.Run(); err != nil {
+		t.Fatalf("%v\n%s", err, trace.String())
+	}
+	if vm.Status != 0 {
+		t.Errorf("check %d failed\n%s", vm.Status, trace.String())
+	}
+	t.Logf("%d instructions, %d units of core", vm.Cycles, len(vm.Core))
+}

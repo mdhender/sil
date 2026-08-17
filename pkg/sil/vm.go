@@ -119,6 +119,13 @@ func (f *Fault) Error() string {
 // SNOBOL4 run to terminate with the message ERROR IN SNOBOL4 SYSTEM."
 const Interrupt = "INTR10"
 
+// Overflow is the label 6.80 note 1 sends a stack overflow to, "which
+// will result in an appropriate error termination". Underflow goes to
+// Interrupt instead (6.77 note 1); the two are different because one
+// is a program that ran out of room and the other is a bug in the
+// implementation of the macro language.
+const Overflow = "OVER"
+
 // Run executes until the program halts, faults, or runs out of cycles.
 func (s *VM) Run() error {
 	for !s.Halted {
@@ -166,6 +173,45 @@ func (s *VM) Step() error {
 // instruction table gives them.
 func (s *VM) execute(c Cell) error {
 	switch c.Op {
+	case op.ADJUST:
+		return s.ADJUST(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.BKSIZE:
+		return s.BKSIZE(c.Ops[0], c.Ops[1])
+	case op.DECRA:
+		s.DECRA(c.Ops[0], c.Ops[1])
+	case op.GETAC:
+		return s.GETAC(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.GETD:
+		return s.GETD(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.GETDC:
+		return s.GETDC(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.GETLG:
+		s.GETLG(c.Ops[0], c.Ops[1])
+	case op.GETLTH:
+		s.GETLTH(c.Ops[0], c.Ops[1])
+	case op.GETSIZ:
+		return s.GETSIZ(c.Ops[0], c.Ops[1])
+	case op.INCRA:
+		s.INCRA(c.Ops[0], c.Ops[1])
+	case op.MOVA:
+		s.MOVA(c.Ops[0], c.Ops[1])
+	case op.MOVBLK:
+		return s.MOVBLK(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.MOVDIC:
+		return s.MOVDIC(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.PUSH:
+		return s.PUSH(c.Ops)
+	case op.PUTAC:
+		return s.PUTAC(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.PUTD:
+		return s.PUTD(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.PUTDC:
+		return s.PUTDC(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.SETAV:
+		s.SETAV(c.Ops[0], c.Ops[1])
+	case op.ZERBLK:
+		return s.ZERBLK(c.Ops[0], c.Ops[1])
+
 	case op.ACOMP:
 		s.ACOMP(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
 	case op.ACOMPC:
@@ -216,11 +262,21 @@ func (s *VM) fault(format string, args ...any) error {
 // vertical slice -- gets a fault instead, because there is nowhere to
 // go.
 func (s *VM) interrupt(format string, args ...any) error {
-	if to, ok := s.Symbols[Interrupt]; ok {
+	return s.transfer(Interrupt, format, args...)
+}
+
+// overflow handles a stack overflow, which 6.80 note 1 sends to OVER
+// rather than to INTR10.
+func (s *VM) overflow(format string, args ...any) error {
+	return s.transfer(Overflow, format, args...)
+}
+
+func (s *VM) transfer(label, format string, args ...any) error {
+	if to, ok := s.Symbols[label]; ok {
 		s.PC = to
 		return nil
 	}
-	return s.fault("%s, and %s is not defined", fmt.Sprintf(format, args...), Interrupt)
+	return s.fault("%s, and %s is not defined", fmt.Sprintf(format, args...), label)
 }
 
 // inCore reports whether an address is a cell of core.

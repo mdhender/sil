@@ -55,8 +55,11 @@ const (
 // full of data cells, and a stack.
 func machine() *VM {
 	s := &VM{
-		Core:      make([]Cell, core),
-		Symbols:   map[string]int{"STACK": stack, "SIZLIM": 1 << 24},
+		Core: make([]Cell, core),
+		Symbols: map[string]int{
+			// The subset of PARMS these operations read.
+			"STACK": stack, "SIZLIM": 1 << 24, "STTL": 16,
+		},
 		Descr:     1,
 		Spec:      2,
 		CPA:       1,

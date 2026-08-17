@@ -1,0 +1,160 @@
+       TITLE   'Descriptor operations'
+       COPY    PARMS
+*
+*      Every check here is a round trip or an identity that S4D58
+*      states, compared with ACOMP.  WHICH carries the number of the
+*      check about to be made, so a failure ends the run with that
+*      number and a pass ends it with zero.
+*
+LEN    EQU     3                    Descriptors in the test block
+STSIZE EQU     32                   Descriptors in the system stack
+TXTLEN EQU     5                    Characters in the test string
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+*      6.80, 6.77: what goes on the stack comes off in reverse.
+*
+       PUSH    (ONECL,TWOCL)
+       POP     (XCL,YCL)
+       SETAC   WHICH,1
+       ACOMP   XCL,TWOCL,FAIL,,FAIL
+       SETAC   WHICH,2
+       ACOMP   YCL,ONECL,FAIL,,FAIL
+*
+*      6.83, 6.39: PUTDC and GETDC round trip through a block.
+*
+       SETAC   PTR,BLOCK
+       PUTDC   PTR,DESCR,TWOCL
+       GETDC   XCL,PTR,DESCR
+       SETAC   WHICH,3
+       ACOMP   XCL,TWOCL,FAIL,,FAIL
+*
+*      6.82, 6.38: the same, with the offset in a descriptor.
+*
+       SETAC   IDX,2*DESCR
+       PUTD    PTR,IDX,ONECL
+       GETD    XCL,PTR,IDX
+       SETAC   WHICH,4
+       ACOMP   XCL,ONECL,FAIL,,FAIL
+*
+*      6.81, 6.36: PUTAC and GETAC move the address field alone.
+*
+       PUTAC   PTR,3*DESCR,TWOCL
+       GETAC   XCL,PTR,3*DESCR
+       SETAC   WHICH,5
+       ACOMP   XCL,TWOCL,FAIL,,FAIL
+*
+*      6.44, 6.23: INCRA and DECRA are inverses.
+*
+       MOVD    XCL,ONECL
+       INCRA   XCL,7
+       DECRA   XCL,7
+       SETAC   WHICH,6
+       ACOMP   XCL,ONECL,FAIL,,FAIL
+*
+*      6.65, 6.42: MOVA addresses the title, GETSIZ reads its size.
+*
+       MOVA    PTR,BLKPTR
+       GETSIZ  XCL,PTR
+       SETAC   WHICH,7
+       ACOMP   XCL,SIZCL,FAIL,,FAIL
+*
+*      6.100: SETAV takes the address from a value field.
+*
+       SETAV   XCL,BLOCK
+       SETAC   WHICH,8
+       ACOMP   XCL,SIZCL,FAIL,,FAIL
+*
+*      6.66: MOVBLK copies the block past its title.
+*
+       SETAC   PTR,CPBLK
+       SETAC   SRC,BLOCK
+       MOVBLK  PTR,SRC,SIZCL
+       GETDC   XCL,PTR,DESCR
+       GETDC   YCL,SRC,DESCR
+       SETAC   WHICH,9
+       ACOMP   XCL,YCL,FAIL,,FAIL
+*
+*      6.66 note 1: the descriptor at A1 is not altered.
+*
+       SETAC   YCL,CPBLK
+       GETAC   XCL,PTR,0
+       SETAC   WHICH,10
+       ACOMP   XCL,YCL,FAIL,,FAIL
+*
+*      6.131: ZERBLK clears it again.
+*
+       ZERBLK  PTR,SIZCL
+       GETDC   XCL,PTR,DESCR
+       SETAC   WHICH,11
+       ACOMP   XCL,ZEROCL,FAIL,,FAIL
+*
+*      6.40: GETLG reads the length a STRING assembled.
+*
+       GETLG   XCL,TXTSP
+       SETAC   WHICH,12
+       ACOMP   XCL,LENCL,FAIL,,FAIL
+*
+*      6.13, 6.41: a string structure is one descriptor bigger than
+*      the storage its string needs.
+*
+       BKSIZE  XCL,STRPTR
+       GETLTH  YCL,LENCL
+       INCRA   YCL,DESCR
+       SETAC   WHICH,13
+       ACOMP   XCL,YCL,FAIL,,FAIL
+*
+*      6.6: ADJUST adds an address integer to the address at A2.
+*
+       SETAC   PTR,BLKPTR
+       SETAC   IDX,7
+       ADJUST  XCL,PTR,IDX
+       SETAC   YCL,BLOCK
+       INCRA   YCL,7
+       SETAC   WHICH,14
+       ACOMP   XCL,YCL,FAIL,,FAIL
+*
+*      6.68: MOVDIC moves between two indirect places.
+*
+       SETAC   PTR,BLOCK
+       SETAC   SRC,BLOCK
+       PUTDC   SRC,DESCR,ONECL
+       MOVDIC  PTR,2*DESCR,SRC,DESCR
+       GETDC   XCL,PTR,2*DESCR
+       SETAC   WHICH,15
+       ACOMP   XCL,ONECL,FAIL,,FAIL
+*
+       SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+ZEROCL DESCR   0,0,0
+ONECL  DESCR   1,0,0
+TWOCL  DESCR   2,0,0
+SIZCL  DESCR   LEN*DESCR,0,0        Size of the test block
+LENCL  DESCR   TXTLEN,0,0           Length of the test string
+WHICH  DESCR   0,0,0                The check about to be made
+XCL    DESCR   0,0,0                Scratch
+YCL    DESCR   0,0,0                Scratch
+IDX    DESCR   0,0,0                Scratch offset
+PTR    DESCR   0,0,0                Scratch pointer
+SRC    DESCR   0,0,0                Scratch pointer
+BLKPTR DESCR   BLOCK,0,0            Pointer to the test block
+STRPTR DESCR   STRTTL,0,0           Pointer to a string structure
+*
+BLOCK  DESCR   BLOCK,TTL+MARK,LEN*DESCR The test block
+       ARRAY   LEN
+CPBLK  DESCR   CPBLK,TTL+MARK,LEN*DESCR Somewhere to copy it
+       ARRAY   LEN
+*
+TXTSP  STRING  'ABCDE'              TXTLEN characters
+STRTTL DESCR   STRTTL,TTL+STTL,TXTLEN Title of a string structure
+       ARRAY   3                    Its other three descriptors
+       BUFFER  TXTLEN               Its characters
+*
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR The system stack
+       ARRAY   STSIZE
+       END

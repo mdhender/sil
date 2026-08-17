@@ -229,8 +229,11 @@ func (s *VM) MOVD(descr1, descr2 int) {
 //	DESCRN AN,FN,VN
 //
 // Programming Notes:
-//  1. Stack underflow should be treated as an error. Transfer should
-//     be to INTR10.
+//  1. If A-(N*D) < STACK, stack underflow occurs. This condition
+//     indicates a programming error in the implementation of the macro
+//     language. An appropriate diagnostic message indicating an error
+//     may be obtained by transferring to the program location INTR10
+//     if the condition is detected.
 //
 // The stack grows upward and CSTACK addresses the descriptor on top,
 // so the first descriptor in the list gets the top of the stack and
@@ -242,7 +245,8 @@ func (s *VM) POP(descrs []int) error {
 	if !ok {
 		return s.fault("POP: the program symbol STACK is not defined")
 	}
-	if s.CStack-s.Descr*(len(descrs)-1) < bottom {
+	// Note 1's condition exactly: A-(N*D) < STACK.
+	if s.CStack-len(descrs)*s.Descr < bottom {
 		return s.interrupt("POP: stack underflow popping %d descriptors from %d", len(descrs), s.CStack)
 	}
 	for i, descr := range descrs {

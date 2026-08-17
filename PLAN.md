@@ -53,7 +53,7 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
 | M4  | Instruction table and shape validation     | **done**             | `pkg/sil/op`      |
 | M5  | First vertical slice runs                  | **done**             | `pkg/sil`, `pkg/sil/asm` |
-| M6  | Instruction batches by §7.5 classification | next                 |                   |
+| M6  | Instruction batches by §7.5 classification | in progress — 2 of 10 batches | `pkg/sil`        |
 | M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
 | M8  | The historical source assembles clean      | TODO                 |                   |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
@@ -116,6 +116,12 @@ The `Host` interface has one operation, `Print`, because `STPRNT` is the only th
 
 **M6 — Instruction batches by §7.5 classification**, cheapest-first, prioritised within batch by §7.4 frequency: descriptor move/set → address-field arithmetic → comparisons → flags → value/size → specifiers → tree/pattern nodes → real numbers → I/O → OS-dependent.
 *Exit per batch:* every instruction has a test covering operand validity, state change, PC behaviour, branch behaviour, and error behaviour (`AGENTS.md`'s Definition of Done).
+
+Batches 1 and 2 are done, in `pkg/sil/descriptors.go`: `GETD` `GETDC` `PUTD` `PUTDC` `MOVDIC` `MOVBLK` `ZERBLK` `PUSH`, and `ADJUST` `BKSIZE` `DECRA` `INCRA` `GETAC` `PUTAC` `GETSIZ` `GETLG` `GETLTH` `MOVA` `SETAV`. With `MOVD`, `POP` and `SETAC` from M5 that is both §7.5 groups complete, and the top six of §7.4's frequency table.
+
+Alongside the unit tests, `pkg/sil/asm/testdata/descriptors.sil` is a SIL program that checks itself: fifteen round trips and identities the document states, compared with `ACOMP`, ending with the number of the check that failed or zero. Two things it caught that a per-operation test would not have: a `MOVBLK` that copies from the title rather than past it moves the same data to the same place, so only §6.66 note 1 — "the descriptor at A1 is not altered" — distinguishes it.
+
+Two operations transfer to a label rather than faulting, and they are different labels: `POP` underflow goes to `INTR10` (§6.77 note 1, §7.3) and `PUSH` overflow to `OVER` (§6.80 note 1), which the source defines at line 5233 as `SETAC ERRTYP,21`.
 
 **M7 — Syntax tables and `STREAM`.** `STREAM` (35 sites), `PLUGTB`/`CLERTB` (4+4), MDATA generated from Appendix A. Lower risk than it looks: §4.2 states only `SNABTB` is ever mutated, so tables are immutable data with one exception.
 *Exit:* a SIL program that plugs `SNABTB`, runs `STREAM`, and reproduces `ANY`/`BREAK`/`NOTANY`/`SPAN`.
