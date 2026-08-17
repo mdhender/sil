@@ -25,7 +25,7 @@ Run fmt/vet/test before considering a change complete.
 
 ## State of the code
 
-`PLAN.md` holds the milestone table and is the authority on what is done. As of M6 a SIL program goes from source through the assembler into the machine and runs. Sixty of the 119 operations are implemented; the rest fault with their own name.
+`PLAN.md` holds the milestone table and is the authority on what is done. All ten milestones are done: the historical Macro SNOBOL4 source assembles clean, runs, and compiles and executes SNOBOL4 programs. All 119 operations of §6 are implemented.
 
 - `pkg/sil/diag` — accumulated diagnostics with source locations. Every stage appends and keeps going.
 - `pkg/sil/scanner` — columns to fields (S4D58 §7.6). Knows no operations.
@@ -34,15 +34,16 @@ Run fmt/vet/test before considering a change complete.
 - `pkg/sil/symtab` — definitions and references; closes the reference graph without any operation knowledge.
 - `pkg/sil/op` — the instruction table: all 131 operations of §6 with their operand signatures, §7.5 classification, size shape and section citation. One table; `Lookup`, `String`, the shape checker and the location counter all read it. Do not add a parallel enum, stringer, or lookup file.
 - `pkg/sil/layout` — the location counter and symbol values, with the relocatable/absolute discipline. Reads sizes from `op`.
-- `pkg/sil` — the machine. `Cell` and `Core` (`cell.go`), `VM`/`Step`/`Run` (`vm.go`), the `Host` boundary (`host.go`), and one method per operation (`macros.go` for the vertical slice, `descriptors.go` for §7.5's descriptor and address-field groups, `compare.go` for the comparisons, `fields.go` for the flag and value-field groups, `integers.go` for integer arithmetic).
-- `pkg/sil/asm` — `Assemble(file, src, Options) (*sil.VM, diag.List)`: the whole front end in one call, then emission into core. There is no image format and none is wanted yet.
-- `cmd/sil` — the runner entry point; empty.
+- `pkg/sil` — the machine. `Cell` and `Core` (`cell.go`), `VM`/`Step`/`Run` (`vm.go`), the `Host` boundary (`host.go`), and one method per operation, in files named for §7.5's groups: `macros.go` (the vertical slice), `descriptors.go`, `compare.go`, `fields.go`, `integers.go`, `specifiers.go`, `nodes.go`, `reals.go`, `control.go`, `misc.go`, `io.go`, `system.go`, `syntax.go`.
+- `pkg/sil/syntab` — Appendix A verbatim, §4.1's character classes, and the expansion of a description into table entries. A corpus test compares the transcription against the manual line by line.
+- `pkg/sil/asm` — `Assemble(file, src, Options) (*sil.VM, diag.List)`: the whole front end in one call, emission into core, then the syntax tables. There is no image format and none is wanted yet.
+- `cmd/sil` — the runner entry point; still empty. `pkg/sil/asm`'s corpus tests are what drive a whole run today.
 - `internal/corpus` — locates the historical source for tests and holds the counts they assert. Corpus tests skip when it is absent; **a skip is not a pass**.
 - `README.md`'s "Proposed Repository Layout" (`asm/`, `sil/`, `image/`, `runtime/`) is an aspirational sketch and does **not** match the tree. Introduce packages when implementation pressure justifies them, per AGENTS.md.
 
 ## Instruction conventions
 
-Follow the pattern established by `pkg/sil/macros.go` (`ACOMP`, `ACOMPC`) when adding an instruction:
+Every operation is implemented, so this section is now a guide to reading them and to changing one. Follow the pattern established by `pkg/sil/macros.go` (`ACOMP`, `ACOMPC`):
 
 - Add its entry to the dispatch in `VM.execute`; the operand signature is already in `pkg/sil/op`'s table.
 - Method on `*VM` named exactly as the SIL opcode, uppercase: `func (s *VM) ACOMP(...)`. Receiver is `s`.
@@ -59,6 +60,6 @@ Follow the pattern established by `pkg/sil/macros.go` (`ACOMP`, `ACOMPC`) when a
 - `engines/sil-v3.11.sil` — the historical Macro SNOBOL4 SIL source (~6600 lines), the eventual assembler input and requirements list. Origin recorded in `references/MANIFEST.md`: `https://raw.githubusercontent.com/atdt/snoflake/master/external/v311.sil`.
 - `references/s4d58-sil-v3.11.pdf` — Griswold, *Implementing SNOBOL4 in SIL: Version 3.11*, S4D58 (Feb 1981). The primary instruction-set reference; every instruction comment cites it. Also `s4d54` (transporting), `s4d57` (implementation), `s4d59` (terminology), `s4n24` (errata).
 
-`engines/README.md` says the source is embedded in the application, so the directory must not be empty — there is no `//go:embed` directive in the tree yet.
+`engines/README.md` says the source is embedded in the application, so the directory must not be empty — there is no `//go:embed` directive in the tree yet. Every test that reads either file skips when it is absent, keyed on the file itself (`internal/corpus`); **a skip is not a pass**, and with them absent nothing checks that SNOBOL4 still runs.
 
 Treat the historical `.sil` source as read-only input. Do not reformat, rename labels, or restructure it; patch only for portability, minimally, and document why.
