@@ -18,7 +18,8 @@ go vet ./...
 go test ./...
 
 go test ./pkg/sil -run TestACOMP -v   # single test
-go run ./cmd/sil                      # runner (currently an empty main)
+go run ./cmd/sil hello.sno            # run a SNOBOL4 program
+go run ./cmd/sil -h                   # the runner's flags
 ```
 
 Run fmt/vet/test before considering a change complete.
@@ -37,7 +38,8 @@ Run fmt/vet/test before considering a change complete.
 - `pkg/sil` — the machine. `Cell` and `Core` (`cell.go`), `VM`/`Step`/`Run` (`vm.go`), the `Host` boundary (`host.go`), and one method per operation, in files named for §7.5's groups: `macros.go` (the vertical slice), `descriptors.go`, `compare.go`, `fields.go`, `integers.go`, `specifiers.go`, `nodes.go`, `reals.go`, `control.go`, `misc.go`, `io.go`, `system.go`, `syntax.go`.
 - `pkg/sil/syntab` — Appendix A verbatim, §4.1's character classes, and the expansion of a description into table entries. A corpus test compares the transcription against the manual line by line.
 - `pkg/sil/asm` — `Assemble(file, src, Options) (*sil.VM, diag.List)`: the whole front end in one call, emission into core, then the syntax tables. There is no image format and none is wanted yet.
-- `cmd/sil` — the runner entry point; still empty. `pkg/sil/asm`'s corpus tests are what drive a whole run today.
+- `engines` — the `//go:embed` that carries the SIL source of SNOBOL4 into the binary. The pattern is a bare `*` because the source is not in the repository and `go:embed` cannot say a file may be absent; `engines/README.md` explains, and `Source` reports `ErrAbsent`.
+- `cmd/sil` — the runner. `sil hello.sno` assembles the embedded implementation and runs the SNOBOL4 program on it. Standard output is what the program printed; standard error is what the SNOBOL4 system printed about itself, which is still undigested FORTRAN formats. `-engine` assembles another SIL source instead, `-listing` and `-trace` are the two ways of looking at a run.
 - `internal/corpus` — locates the historical source for tests and holds the counts they assert. Corpus tests skip when it is absent; **a skip is not a pass**.
 - `README.md`'s "Proposed Repository Layout" (`asm/`, `sil/`, `image/`, `runtime/`) is an aspirational sketch and does **not** match the tree. Introduce packages when implementation pressure justifies them, per AGENTS.md.
 
@@ -60,6 +62,6 @@ Every operation is implemented, so this section is now a guide to reading them a
 - `engines/sil-v3.11.sil` — the historical Macro SNOBOL4 SIL source (~6600 lines), the eventual assembler input and requirements list. Origin recorded in `references/MANIFEST.md`: `https://raw.githubusercontent.com/atdt/snoflake/master/external/v311.sil`.
 - `references/s4d58-sil-v3.11.pdf` — Griswold, *Implementing SNOBOL4 in SIL: Version 3.11*, S4D58 (Feb 1981). The primary instruction-set reference; every instruction comment cites it. Also `s4d54` (transporting), `s4d57` (implementation), `s4d59` (terminology), `s4n24` (errata).
 
-`engines/README.md` says the source is embedded in the application, so the directory must not be empty — there is no `//go:embed` directive in the tree yet. Every test that reads either file skips when it is absent, keyed on the file itself (`internal/corpus`); **a skip is not a pass**, and with them absent nothing checks that SNOBOL4 still runs.
+`engines/engines.go` embeds the first of these, and `cmd/sil` will not run without it. Every test that reads either file skips when it is absent, keyed on the file itself (`internal/corpus`); **a skip is not a pass**, and with them absent nothing checks that SNOBOL4 still runs.
 
 Treat the historical `.sil` source as read-only input. Do not reformat, rename labels, or restructure it; patch only for portability, minimally, and document why.

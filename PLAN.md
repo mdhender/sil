@@ -243,7 +243,7 @@ Eight more programs run alongside it, each reaching a subsystem the first does n
 The ten milestones are done. What the machine does not have:
 
 - **A FORTRAN IV format interpreter** (risk 9). `Host.Print` and `Host.Output` both take the format undigested, which is where §2.1 puts the boundary, and nothing on the far side reads one. The effect is that the system's banner, its error messages and its statistics come out as format strings with the values beside them. Nothing a SNOBOL4 program prints goes through a format, so the programs above are unaffected.
-- **A runner.** `cmd/sil` is still empty, and `engines/README.md` promises the SIL source is embedded, which needs a `//go:embed`.
+- ~~A runner.~~ Done. `engines/engines.go` embeds the SIL source and `cmd/sil` runs SNOBOL4 programs on it: `sil hello.sno` prints `HELLO`. Standard output is what the program printed and standard error is what the system printed about itself, because the two leave the machine by different operations — `STPRNT` hands over the characters of a string, `OUTPUT` hands over a FORTRAN format — and only one of them is finished. `-merge` gives the single stream the original printed. Reaching `ENDEX` is exit 0 whatever the program did; `ENDEX`'s operand is the keyword `&ABEND` (§6.29 note 2), not a status, and a nonzero one is reported rather than silently dropped, since this machine has no core dump to give (§6.29 note 1 allows that).
 - **`ORDVST`**, which is §6.74 note 1's documented alternative rather than the operation; the post-run dump is unalphabetized. See the miscellaneous batch.
 - **`LOAD`, `LINK` and `UNLOAD`**, which are §7.1's alternatives for a machine with no external functions.
 
