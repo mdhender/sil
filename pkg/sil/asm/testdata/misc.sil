@@ -1,0 +1,188 @@
+       TITLE   'The miscellaneous group'
+       COPY    PARMS
+*
+*      6.56, 6.58, 6.59, 6.61, 6.74, 6.94, 6.109, 6.124 and 6.127.
+*      WHICH carries the number of the check.
+*
+*      5.3 says the integer data type code I is defined in the source
+*      program; 6.127 says the same of OBSIZ, the number of chains in
+*      variable storage.
+*
+I      EQU     6
+OBSIZ  EQU     16
+STSIZE EQU     8
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+*      6.109: SPCINT converts a string to an integer and stamps the
+*      value field with the integer data type code.
+*
+       SPCINT  XCL,N123SP,FAIL
+       SETAC   WHICH,1
+       ACOMPC  XCL,123,FAIL,,FAIL
+       SETAC   WHICH,2
+       VEQLC   XCL,I,FAIL
+       SPCINT  XCL,NM12SP,FAIL
+       SETAC   WHICH,3
+       ACOMPC  XCL,0,FAIL,FAIL      Negative
+       MNSINT  YCL,XCL
+       SETAC   WHICH,4
+       ACOMPC  YCL,12,FAIL,,FAIL    and twelve of it
+*
+*      6.109 note 3: a sign alone is not an integer, and a real is not
+*      one either -- SPREAL is what takes that.
+*
+       SETAC   WHICH,5
+       SPCINT  XCL,SIGNSP,SPCOK,FAIL
+SPCOK  SETAC   WHICH,6
+       SPCINT  XCL,R15SP,SPCOK2,FAIL
+SPCOK2 LHERE   ,
+*
+*      6.94: RPLACE rewrites SPEC1 in place, and 6.94 note 2 makes the
+*      last of a duplicated character win: A is given X and then Y, so
+*      it must come out Y.
+*
+       SETSP   WSP,SUBJSP
+       RPLACE  WSP,FROMSP,WITHSP
+       SETAC   WHICH,7
+       LEXCMP  WSP,DONESP,FAIL,,FAIL
+*
+*      6.124: TOP walks back to the first descriptor carrying TTL and
+*      says how far it went.  Note 1 lets that be no distance at all.
+*
+       SETAC   WHICH,8
+       TOP     XCL,YCL,BLKEND
+       ACOMP   XCL,BLKPTR,FAIL,,FAIL
+       SETAC   WHICH,9
+       ACOMPC  YCL,3*DESCR,FAIL,,FAIL
+       SETAC   WHICH,10
+       TOP     XCL,YCL,BLKPTR
+       ACOMPC  YCL,0,FAIL,,FAIL     Note 1: N may be zero
+*
+*      6.58, 6.59: an attribute list of two type-value pairs.  Note 1
+*      of each says DESCR1 addresses the start of the pair, not the
+*      descriptor found, so LOCAPT is one descriptor back and LOCAPV
+*      is two.  The second pair is the check that matters: the list
+*      runs through A+2K*DESCR and that descriptor is in it.
+*
+       SETAC   WHICH,11
+       LOCAPT  XCL,ATTPTR,TY1CL,FAIL
+       ACOMP   XCL,ATTPTR,FAIL,,FAIL
+       SETAC   WHICH,12
+       LOCAPT  XCL,ATTPTR,TY2CL,FAIL
+       ACOMP   XCL,PAIR2,FAIL,,FAIL
+       SETAC   WHICH,13
+       LOCAPV  XCL,ATTPTR,VA1CL,FAIL
+       ACOMP   XCL,ATTPTR,FAIL,,FAIL
+       SETAC   WHICH,14
+       LOCAPV  XCL,ATTPTR,VA2CL,FAIL
+       ACOMP   XCL,PAIR2,FAIL,,FAIL
+       SETAC   WHICH,15
+       LOCAPT  XCL,ATTPTR,VA1CL,LOCOK,FAIL
+*				   A value is not a type
+LOCOK  SETAC   WHICH,16
+       LOCAPV  XCL,ATTPTR,TY2CL,LOCOK2,FAIL
+*				   and a type is not a value
+LOCOK2 LHERE   ,
+*
+*      6.61, 6.56: the chain of alternatives.  PAT has two nodes; the
+*      least of their fourth fields is 2, and LINKOR replaces the zero
+*      that ends the chain.
+*
+       SETAC   WHICH,17
+       LVALUE  XCL,PATPTR
+       ACOMPC  XCL,2,FAIL,,FAIL
+       SETAC   ZCL,12
+       LINKOR  PATPTR,ZCL
+       GETDC   XCL,PATPTR,ONODE+2*DESCR
+       SETAC   WHICH,18
+       ACOMPC  XCL,12,FAIL,,FAIL
+*
+*      6.127: VARID gives the same pair for the same string, a
+*      different one for an anagram, and a K on a descriptor boundary
+*      no larger than OBSIZ*DESCR-DESCR.
+*
+       VARID   XCL,ABSP
+       VARID   YCL,ABSP
+       SETAC   WHICH,19
+       ACOMP   XCL,YCL,FAIL,,FAIL
+       SETAC   WHICH,20
+       VEQL    XCL,YCL,FAIL
+       VARID   YCL,BASP
+       SETAC   WHICH,21
+       ACOMP   XCL,YCL,ANAG,,ANAG   An anagram must differ somewhere
+       VEQL    XCL,YCL,ANAG,FAIL
+ANAG   SETAC   WHICH,22
+       ACOMPC  XCL,0,,,FAIL         K is never negative
+       SETAC   WHICH,23
+       ACOMPC  XCL,LIMK,FAIL        and never past OBSIZ*DESCR-DESCR
+*
+*      6.74 note 1: ORDVST may perform no operation, which is what it
+*      does here.  Reaching the next check is the whole of it.
+*
+       ORDVST  ,
+       SETAC   WHICH,24
+       ACOMPC  XCL,LIMK,FAIL        Nothing moved
+*
+       SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+LIMK   EQU     OBSIZ*DESCR-DESCR
+ONODE  EQU     4*DESCR              A pattern node, four descriptors
+WHICH  DESCR   0,0,0
+XCL    DESCR   0,0,0
+YCL    DESCR   0,0,0
+ZCL    DESCR   0,0,0
+*
+*      A block of four descriptors whose title carries TTL.
+*
+BLKPTR DESCR   BLOCK,0,0
+BLKEND DESCR   BLOCK+3*DESCR,0,0
+BLOCK  DESCR   BLOCK,TTL+MARK,4*DESCR
+       ARRAY   3
+*
+*      An attribute list: a title whose value field is 2K*DESCR, then
+*      two type-value pairs.  ATTPTR and PAIR2 address the starts of
+*      the two pairs, which is what LOCAPT and LOCAPV report.
+*
+ATTPTR DESCR   ATTBLK,0,0
+PAIR2  DESCR   ATTBLK+2*DESCR,0,0
+ATTBLK DESCR   ATTBLK,TTL,4*DESCR
+TY1CL  DESCR   11,0,0
+VA1CL  DESCR   21,0,0
+TY2CL  DESCR   12,0,0
+VA2CL  DESCR   22,0,0
+*
+*      A pattern of two nodes.  The alternative field is the third
+*      descriptor of a node and holds the offset of the next node from
+*      the base of the pattern; the fourth holds the value LVALUE
+*      takes the least of.
+*
+PATPTR DESCR   PAT,0,0
+PAT    DESCR   0,0,0
+       DESCR   0,0,0
+       DESCR   ONODE,0,0            The next node is one node on
+       DESCR   9,0,0
+       DESCR   0,0,0
+       DESCR   0,0,0
+       DESCR   0,0,0                and this one ends the chain
+       DESCR   2,0,0
+*
+WSP    SPEC    ,
+SUBJSP STRING  'AAABC'
+FROMSP STRING  'AAB'
+WITHSP STRING  'XYZ'
+DONESP STRING  'YYYZC'
+N123SP STRING  '123'
+NM12SP STRING  '-12'
+SIGNSP STRING  '-'
+R15SP  STRING  '1.5'
+ABSP   STRING  'AB'
+BASP   STRING  'BA'
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR
+       ARRAY   STSIZE
+       END

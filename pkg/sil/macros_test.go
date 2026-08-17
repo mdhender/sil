@@ -60,7 +60,7 @@ func machine() *VM {
 		Core: make([]Cell, core),
 		Symbols: map[string]int{
 			// The subset of PARMS these operations read.
-			"STACK": stack, "SIZLIM": 1 << 24, "STTL": 16,
+			"STACK": stack, "SIZLIM": 1 << 24, "TTL": 1, "STTL": 16,
 		},
 		Descr:     1,
 		Spec:      2,

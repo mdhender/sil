@@ -289,6 +289,25 @@ func (s *VM) execute(c Cell) error {
 	case op.ZERBLK:
 		return s.ZERBLK(c.Ops[0], c.Ops[1])
 
+	case op.LINKOR:
+		return s.LINKOR(c.Ops[0], c.Ops[1])
+	case op.LVALUE:
+		return s.LVALUE(c.Ops[0], c.Ops[1])
+	case op.LOCAPT:
+		return s.LOCAPT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.LOCAPV:
+		return s.LOCAPV(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.ORDVST:
+		s.ORDVST()
+	case op.RPLACE:
+		return s.RPLACE(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.SPCINT:
+		return s.SPCINT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.TOP:
+		return s.TOP(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.VARID:
+		return s.VARID(c.Ops[0], c.Ops[1])
+
 	case op.PSTACK:
 		s.PSTACK(c.Ops[0])
 	case op.SPUSH:

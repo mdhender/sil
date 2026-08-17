@@ -335,3 +335,10 @@ func TestRealNumberOperations(t *testing.T) { selfChecking(t, "testdata/reals.si
 // omitted one of 6.98 note 1 and the I = N+1 one of note 2 -- shows
 // that the emitter and the arithmetic agree.
 func TestControlOperations(t *testing.T) { selfChecking(t, "testdata/control.sil") }
+
+// The miscellaneous batch. Two of its operations walk a pattern's
+// chain of alternatives, which is the one structure in the document
+// that no single section defines: 6.61's figure gives the arithmetic
+// and CPYPAT's relocation confirms it, so misc.sil builds a chain by
+// hand and makes LVALUE and LINKOR agree about where its end is.
+func TestMiscellaneousOperations(t *testing.T) { selfChecking(t, "testdata/misc.sil") }

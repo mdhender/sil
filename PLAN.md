@@ -45,19 +45,19 @@ Each exit criterion is mechanically checkable. M0–M2 involve zero instruction 
 
 A milestone is **done** when its exit criterion is checked by a test that *ran* — the whole-source tests skip when `engines/sil-v3.11.sil` is absent, and a skip is not a pass.
 
-|     | Milestone                                  | Status               | Where             |
-|-----|--------------------------------------------|----------------------|-------------------|
-| M0  | Scanner                                    | **done** — `86a6d81` | `pkg/sil/scanner` |
-| M1  | Operand parser                             | **done** — `adbbae0` | `pkg/sil/parser`  |
-| M2  | The symbol gate                            | **done** — `c1a4ccc` | `pkg/sil/symtab`  |
-| M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
-| M4  | Instruction table and shape validation     | **done**             | `pkg/sil/op`      |
-| M5  | First vertical slice runs                  | **done**             | `pkg/sil`, `pkg/sil/asm` |
-| M6  | Instruction batches by §7.5 classification | in progress — 96 of 119 operations | `pkg/sil`        |
-| M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
-| M8  | The historical source assembles clean      | TODO                 |                   |
-| M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
-| M10 | First SNOBOL4 program                      | TODO                 |                   |
+|     | Milestone                                  | Status                             | Where                               |
+|-----|--------------------------------------------|------------------------------------|-------------------------------------|
+| M0  | Scanner                                    | **done** — `86a6d81`               | `pkg/sil/scanner`                   |
+| M1  | Operand parser                             | **done** — `adbbae0`               | `pkg/sil/parser`                    |
+| M2  | The symbol gate                            | **done** — `c1a4ccc`               | `pkg/sil/symtab`                    |
+| M3  | Externals chosen; layout closes            | **done**                           | `pkg/sil/copyseg`, `pkg/sil/layout` |
+| M4  | Instruction table and shape validation     | **done**                           | `pkg/sil/op`                        |
+| M5  | First vertical slice runs                  | **done**                           | `pkg/sil`, `pkg/sil/asm`            |
+| M6  | Instruction batches by §7.5 classification | in progress — 96 of 119 operations | `pkg/sil`                           |
+| M7  | Syntax tables and `STREAM`                 | TODO                               |                                     |
+| M8  | The historical source assembles clean      | TODO                               |                                     |
+| M9  | Execution to first trap, then to `ENDEX`   | TODO                               |                                     |
+| M10 | First SNOBOL4 program                      | TODO                               |                                     |
 
 The front end (M0–M3) is complete: the whole 6,580-line source scans, parses and resolves with no diagnostics, the 37 undefined names it derives are exactly the machine-dependent contract, and with the three COPY segments in it lays out into 16,506 address units with every symbol valued and every expression well formed.
 
@@ -176,7 +176,17 @@ Two adjustments the batch forced:
 - **The assembler now writes `N` into the `SELBRA` cell.** §6.98 note 3 asks for a check that `I` is in `1..N+1`, and the machine cannot recover `N` from core — a `BRANCH` belonging to a `SELBRA` is indistinguishable from any other. This is the one place PLAN's "the VM never needs to know M" is not quite free; it costs one operand and buys note 3.
 - **`BRANIC` adds `N` rather than asserting it is zero**, which is a deviation from this plan. §6.16 note 1 is a statement about the SNOBOL4 source, not a restriction on the operation — `N` is in §6.16's box like any other operand — and the arithmetic is the same either way, so faulting on a nonzero one would be a restriction this machine invented. Nothing is lost: `N` is resolved by the assembler and cannot change at run time, so the assertion could only ever fire on a source the document permits.
 
-**Remaining, by §7.5 group:** miscellaneous (9), I/O (5), OS-dependent (5), and `STREAM`/`CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
+The miscellaneous batch follows in `pkg/sil/misc.go`: `LINKOR` `LOCAPT` `LOCAPV` `LVALUE` `ORDVST` `RPLACE` `SPCINT` `TOP` `VARID`, checked from SIL by `pkg/sil/asm/testdata/misc.sil`. `LOCAPV` is 5.2% of execution time, the fifth entry in §7.4's table.
+
+Three things this batch had to settle:
+
+- **The chain of alternatives is not defined in any one section.** `LINKOR` and `LVALUE` both walk it, and §6.61's figure gives the arithmetic: from a pattern at `A`, the first alternative field is at `A+2D` and holds `N1`, the next is at `A+N1+2D`. So a field holds the offset of the next node *from the base of the pattern*, not from itself. `CPYPAT` confirms it from the other side — copying `X | Y` (the source's `ORPP`, line 2171) copies `X` with `A4 = 0` and `Y` with `A4 = XSIZ`, and §6.21 relocates each alternative field by `F1(X) = X+A4`. A self-relative link would need no relocation when `Y` moves as a unit; one measured from the base needs exactly `XSIZ`. The `LINKOR` on line 2180 then writes `XSIZ` into the end of `X`'s chain, which is `Y`'s first node measured from that same base. Both walks carry a loop guard, since a corrupt chain is otherwise unbounded.
+- **The attribute list includes the descriptor at `A+2K*D`.** §6.58's figure draws that row empty, which reads as a terminator, but a block in this system is a title and then the storage its value field measures — the source writes `BLOCK DESCR BLOCK,TTL+MARK,LEN*DESCR` and then `ARRAY LEN` — so the elements run from `A+D` through `A+2K*D` inclusive and the last value descriptor is the last element. `misc.sil` check 14 is exactly that boundary; with an exclusive bound it fails.
+- **`ORDVST` is the documented alternative rather than the operation.** §6.74 note 1 offers "perform no operation", §7.1 lists it with that alternative and names what it disables as alphabetization of the post-run dump, and that is what is implemented. The reason is note 3: sorting has to leave out variables whose value is the null string, and §6.74 draws only the parts of a variable it calls relevant — the length at `A`, the link at `A+3D`, the characters at `A+4D`. Where a variable's *value* lives is not in that section, so implementing note 3 would mean deciding it from the source. The single call site, line 5118, runs once at the end of a run and only under `&DUMP`. This is the one operation in M6 not implemented as written.
+
+`VARID`'s hash is this machine's choice: §6.127 note 4 offers an algorithm rather than requiring one, and notes 1 to 3 are the specification — two functions, uncorrelated with the characters and with each other, `K` a descriptor-aligned offset no larger than `(OBSIZ-1)*D` and `M` no larger than `SIZLIM`. FNV-1a forwards and backwards gives both, with no seed, so a run is reproducible.
+
+**Remaining, by §7.5 group:** I/O (5), OS-dependent (5), and `STREAM`/`CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
 
 **M7 — Syntax tables and `STREAM`.** `STREAM` (35 sites), `PLUGTB`/`CLERTB` (4+4), MDATA generated from Appendix A. Lower risk than it looks: §4.2 states only `SNABTB` is ever mutated, so tables are immutable data with one exception.
 *Exit:* a SIL program that plugs `SNABTB`, runs `STREAM`, and reproduces `ANY`/`BREAK`/`NOTANY`/`SPAN`.
