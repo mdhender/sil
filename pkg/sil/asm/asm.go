@@ -118,6 +118,14 @@ type emitter struct {
 	// procedure operand of BRANCH and RCALL can be checked before it
 	// is discarded (6.15, 6.78 note 1).
 	procs map[int]bool
+
+	// formats holds how many characters every FORMAT assembled.
+	// 6.75's figure gives OUTPUT's format as characters at a location
+	// and never says how many, because a FORTRAN IV routine reads to
+	// the closing parenthesis; this machine does not read formats, so
+	// the count travels with the address. It is the one thing about a
+	// FORMAT operand that only the assembler knows.
+	formats map[int]int
 }
 
 func emit(stmts []parser.Statement, lay *layout.Layout, opts Options) (*sil.VM, diag.List) {
@@ -133,9 +141,10 @@ func emit(stmts []parser.Statement, lay *layout.Layout, opts Options) (*sil.VM, 
 			Host:    opts.Host,
 			Trace:   opts.Trace,
 		},
-		lay:   lay,
-		stmts: stmts,
-		procs: map[int]bool{},
+		lay:     lay,
+		stmts:   stmts,
+		procs:   map[int]bool{},
+		formats: map[int]int{},
 	}
 
 	// A cell holds one character, so a machine that packs them would
@@ -146,8 +155,12 @@ func emit(stmts []parser.Statement, lay *layout.Layout, opts Options) (*sil.VM, 
 	}
 
 	for i, s := range stmts {
-		if op.Lookup(s.Op) == op.PROC {
-			e.procs[lay.Placement(i).Addr] = true
+		p := lay.Placement(i)
+		switch op.Lookup(s.Op) {
+		case op.PROC:
+			e.procs[p.Addr] = true
+		case op.FORMAT:
+			e.formats[p.Addr] = p.Size
 		}
 	}
 	for i, s := range stmts {
@@ -325,6 +338,10 @@ func (e *emitter) operands(s parser.Statement, entry op.Entry, next int) []int {
 			out = append(out, e.list(s, i)...)
 		case o.Slot == op.SlotBranch:
 			out = append(out, e.branch(s, i, next))
+		case o.Slot == op.SlotFormat:
+			// The address and then the length; see emitter.formats.
+			at := e.field(s, i)
+			out = append(out, at, e.formats[at])
 		default:
 			out = append(out, e.field(s, i))
 		}

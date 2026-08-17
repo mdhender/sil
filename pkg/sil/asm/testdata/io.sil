@@ -1,0 +1,99 @@
+       TITLE   'Input, output and the system'
+       COPY    PARMS
+*
+*      6.14, 6.22, 6.30, 6.55, 6.57, 6.71, 6.75, 6.92, 6.115 and
+*      6.126.  What the host was asked for is checked in Go, since the
+*      program cannot see it; what comes back is checked here.  WHICH
+*      carries the number of the check.
+*
+STSIZE EQU     8
+LINELN EQU     4
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+*      6.75: OUTPUT hands a format and a list of address fields to the
+*      output routine.  The format is characters assembled by FORMAT,
+*      and how many of them there are is something only the assembler
+*      knows.
+*
+       SETAC   XCL,11
+       SETAC   YCL,22
+       OUTPUT  UNITCL,MSGFMT,(XCL,YCL)
+       OUTPUT  UNITCL,BARFMT
+*
+*      6.115: STREAD reads L characters.  The second record is shorter
+*      than L, so note 1's FORTRAN IV convention pads it with blanks.
+*
+       SETSP   WSP,INBFSP
+       SETAC   WHICH,1
+       STREAD  WSP,UNITCL,FAIL,FAIL
+       SETAC   WHICH,2
+       LEXCMP  WSP,LINE1,FAIL,,FAIL
+       SETAC   WHICH,3
+       STREAD  WSP,UNITCL,FAIL,FAIL
+       SETAC   WHICH,4
+       LEXCMP  WSP,LINE2,FAIL,,FAIL
+       SETAC   WHICH,5
+       STREAD  WSP,UNITCL,EOFOK,FAIL,FAIL
+*				   The third read is the end of file
+EOFOK  LHERE   ,
+*
+*      6.14, 6.30, 6.92: none of the three alters anything or
+*      branches, so reaching the next check is what there is to see.
+*
+       BKSPCE  UNITCL
+       ENFILE  UNITCL
+       REWIND  UNITCL
+*
+*      6.71: MSTIME clears the other two fields.
+*
+       MSTIME  XCL
+       SETAC   WHICH,6
+       ACOMPC  XCL,1234,FAIL,,FAIL
+       SETAC   WHICH,7
+       VEQLC   XCL,0,FAIL
+*
+*      6.22: DATE specifies the host's representation of the date.
+*
+       DATE    WSP
+       SETAC   WHICH,8
+       LEXCMP  WSP,DATESP,FAIL,,FAIL
+*
+*      6.126 note 2: UNLOAD performs no operation, so control simply
+*      continues to the next check.
+*
+       UNLOAD  DATESP
+       SETAC   WHICH,9
+       LEXCMP  WSP,DATESP,FAIL,,FAIL
+*
+*      7.1: with no external functions, LOAD branches to UNDF and LINK
+*      to INTR10.  Neither takes its own FLOC or SLOC.
+*
+       SETAC   WHICH,10
+       LOAD    XCL,DATESP,DATESP,FAIL,FAIL
+*_
+UNDF   SETAC   WHICH,11
+       LINK    XCL,XCL,XCL,XCL,FAIL,FAIL
+*_
+INTR10 SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+WHICH  DESCR   0,0,0
+XCL    DESCR   0,0,0
+YCL    DESCR   0,0,0
+UNITCL DESCR   5,0,0
+MSGFMT FORMAT  '(1H ,2I5)'
+BARFMT FORMAT  '(1H1)'
+WSP    SPEC    ,
+INBFSP SPEC    INBUF,0,0,0,LINELN
+INBUF  BUFFER  LINELN
+LINE1  STRING  'ABCD'
+LINE2  STRING  'EF  '
+DATESP STRING  '81.092'
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR
+       ARRAY   STSIZE
+       END

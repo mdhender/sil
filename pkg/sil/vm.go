@@ -91,11 +91,12 @@ type VM struct {
 	Trace io.Writer
 
 	// The buffers S4D58 calls "local to" one operation: 6.49 note 2
-	// for INTSPC and 6.89 note 3 for REALST. Each is taken from past
-	// the end of the assembled image the first time its operation
-	// runs; see VM.buffer.
+	// for INTSPC, 6.89 note 3 for REALST and 6.22 note 2 for DATE.
+	// Each is taken from past the end of the assembled image the first
+	// time its operation runs; see VM.buffer.
 	intBuf  scratch
 	realBuf scratch
+	dateBuf scratch
 }
 
 // scratch is a buffer that belongs to the machine rather than to the
@@ -288,6 +289,28 @@ func (s *VM) execute(c Cell) error {
 		s.SETAV(c.Ops[0], c.Ops[1])
 	case op.ZERBLK:
 		return s.ZERBLK(c.Ops[0], c.Ops[1])
+
+	case op.OUTPUT:
+		return s.OUTPUT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3:])
+	case op.STREAD:
+		return s.STREAD(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.BKSPCE:
+		return s.BKSPCE(c.Ops[0])
+	case op.ENFILE:
+		return s.ENFILE(c.Ops[0])
+	case op.REWIND:
+		return s.REWIND(c.Ops[0])
+
+	case op.MSTIME:
+		s.MSTIME(c.Ops[0])
+	case op.DATE:
+		s.DATE(c.Ops[0])
+	case op.LOAD:
+		return s.LOAD(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.LINK:
+		return s.LINK(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4], c.Ops[5])
+	case op.UNLOAD:
+		s.UNLOAD(c.Ops[0])
 
 	case op.LINKOR:
 		return s.LINKOR(c.Ops[0], c.Ops[1])

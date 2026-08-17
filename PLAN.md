@@ -53,7 +53,7 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M3  | Externals chosen; layout closes            | **done**                           | `pkg/sil/copyseg`, `pkg/sil/layout` |
 | M4  | Instruction table and shape validation     | **done**                           | `pkg/sil/op`                        |
 | M5  | First vertical slice runs                  | **done**                           | `pkg/sil`, `pkg/sil/asm`            |
-| M6  | Instruction batches by §7.5 classification | in progress — 96 of 119 operations | `pkg/sil`                           |
+| M6  | Instruction batches by §7.5 classification | **done** — 116 of 119; the other three are M7 | `pkg/sil` |
 | M7  | Syntax tables and `STREAM`                 | TODO                               |                                     |
 | M8  | The historical source assembles clean      | TODO                               |                                     |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                               |                                     |
@@ -186,7 +186,17 @@ Three things this batch had to settle:
 
 `VARID`'s hash is this machine's choice: §6.127 note 4 offers an algorithm rather than requiring one, and notes 1 to 3 are the specification — two functions, uncorrelated with the characters and with each other, `K` a descriptor-aligned offset no larger than `(OBSIZ-1)*D` and `M` no larger than `SIZLIM`. FNV-1a forwards and backwards gives both, with no seed, so a run is reproducible.
 
-**Remaining, by §7.5 group:** I/O (5), OS-dependent (5), and `STREAM`/`CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
+The input/output and system-dependent batches finish M6, in `pkg/sil/io.go` and `pkg/sil/system.go`: `OUTPUT` `STREAD` `BKSPCE` `ENFILE` `REWIND`, and `MSTIME` `DATE` `LOAD` `LINK` `UNLOAD`. `pkg/sil/asm/testdata/io.sil` runs all ten, and is the first program whose checks are split between the two sides — what the host was asked for is only visible from Go, so the SIL program checks what comes back and the test checks what went out.
+
+This is where the `Host` interface grew from one operation to eight, along the boundary §2.1 draws: SNOBOL4 does its input and output through FORTRAN IV routines and names files by unit reference number, so the machine resolves the number and hands over bytes, and nothing on this side interprets a format. `WriterHost` answers everything it cannot do the way S4D58 licenses — no clock (§6.71 note 4), no calendar (§6.22 note 4), and positioning a writer does nothing rather than failing — which is also what keeps a test run reproducible.
+
+Three decisions:
+
+- **The assembler passes a `FORMAT`'s length with its address.** §6.75's figure gives `OUTPUT`'s format as characters at a location and never says how many, because a FORTRAN IV routine reads to the closing parenthesis. This machine does not read formats, so the count travels alongside; it is the one thing about a `FORMAT` operand that only the assembler knows. Same shape as `SELBRA`'s `N`.
+- **`STREAD` pads a short record with blanks.** §6.115 note 1 defers to "FORTRAN IV conventions regarding truncation or reading of additional records", and a FORTRAN A-format read of L characters pads. `L` goes across to the host, so a host that would rather read additional records to fill it may.
+- **The external-function group takes §7.1's alternatives**, which footnote 4 says to apply together: `LOAD` branches to `UNDF` (§6.57 note 2 — a program error, so not `INTR10`), `LINK` to `INTR10` (§6.55 note 2 — nothing reaches a `LINK` without a `LOAD` having succeeded, so getting there is an implementation error), and `UNLOAD` performs no operation, which §6.126 note 2 requires rather than permits: the source-language `UNLOAD` undefines ordinary functions too and calls the macro on the way through. This retires risk 10.
+
+**M6 is done.** All 116 executable operations outside M7 are implemented, each with unit tests and at least one assembled SIL program: `slice.sil` `descriptors.sil` `compare.sil` `integers.sil` `specifiers.sil` `nodes.sil` `reals.sil` `control.sil` `misc.sil` `io.sil`. The three left are `STREAM`, `CLERTB` and `PLUGTB`, which need the syntax tables and are M7's own scope. One operation, `ORDVST`, is implemented by the documented alternative rather than as written; see the miscellaneous batch above. §7.1 marks about thirty of these optional, each with the language feature it disables.
 
 **M7 — Syntax tables and `STREAM`.** `STREAM` (35 sites), `PLUGTB`/`CLERTB` (4+4), MDATA generated from Appendix A. Lower risk than it looks: §4.2 states only `SNABTB` is ever mutated, so tables are immutable data with one exception.
 *Exit:* a SIL program that plugs `SNABTB`, runs `STREAM`, and reproduces `ANY`/`BREAK`/`NOTANY`/`SPAN`.
@@ -344,8 +354,8 @@ Also carry over from maclo: `Assemble(nodes, Options) (*VM, error)` returning a 
 6. **First-error bailout unusable at 6,580 lines** — M2. maclo's retrospective names this as its own mistake; accumulate per stage.
 7. **Syntax tables** — M7. Appendix A is the spec; budget for 25 tables where the source names only 13.
 8. **`PLUGTB`/`CLERTB`** — M7, and optional per §7.1 (cost: `ANY`/`BREAK`/`SPAN`/`NOTANY`).
-9. **FORTRAN formats** for the 26 `FORMAT` literals — M6 I/O batch, entirely behind `Host.Print`.
-10. **`LOAD`/`UNLOAD`/`LINK`** — one site each, 0.000% execution time. Documented trap, or never.
+9. **FORTRAN formats** for the 26 `FORMAT` literals — M6 I/O batch, entirely behind `Host.Print`. Still open, and now behind `Host.Output` as well: the boundary holds, and no interpreter exists. `WriterHost` writes the format's characters and the values in decimal, which is legible and is not FORTRAN.
+10. **`LOAD`/`UNLOAD`/`LINK`** — one site each, 0.000% execution time. Documented trap, or never. Retired in M6, by §7.1's own alternatives: `UNDF`, `INTR10` and no operation, applied together as footnote 4 requires.
 
 Struck from the risk register by the manual: `BRANCH LOC,PROC` (§6.15) and `PROC ,` vs `PROC name` (§6.78 note 2).
 

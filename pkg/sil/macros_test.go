@@ -471,13 +471,12 @@ func TestStep(t *testing.T) {
 
 	t.Run("names an unimplemented operation", func(t *testing.T) {
 		s := machine()
-		// LOAD is the last operation this machine will ever get:
-		// PLAN.md's risk register has it at 0.000% of execution time
-		// with one call site, and 7.1 makes it optional. Any operation
-		// the dispatch does not name will do here.
-		s.instr(10, op.LOAD, d1, spec1, spec2, gt, lt)
+		// STREAM is M7's, since it needs the syntax tables. Any
+		// operation the dispatch does not name will do here; change it
+		// when this one arrives.
+		s.instr(10, op.STREAM, spec1, spec2, str1, gt, eq, lt)
 		err := s.Step()
-		if err == nil || !strings.Contains(err.Error(), "LOAD is not implemented") {
+		if err == nil || !strings.Contains(err.Error(), "STREAM is not implemented") {
 			t.Errorf("reported %v", err)
 		}
 	})
@@ -502,17 +501,4 @@ func TestStep(t *testing.T) {
 			t.Error("no error with the counter outside core")
 		}
 	})
-}
-
-// recorder is a Host that keeps what it was asked to print.
-type recorder struct {
-	unit      int
-	format    []byte
-	text      []byte
-	condition int
-}
-
-func (r *recorder) Print(unit int, format, s []byte) (int, error) {
-	r.unit, r.format, r.text = unit, format, s
-	return r.condition, nil
 }

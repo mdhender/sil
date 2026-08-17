@@ -29,6 +29,7 @@ package asm_test
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -75,7 +76,7 @@ func TestVerticalSlice(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out, trace bytes.Buffer
 			vm := assemble(t, slice(t, tt.acl), asm.Options{
-				Host:  sil.WriterHost{W: &out},
+				Host:  &sil.WriterHost{W: &out},
 				Trace: &trace,
 			})
 			vm.MaxCycles = 1000
@@ -342,3 +343,108 @@ func TestControlOperations(t *testing.T) { selfChecking(t, "testdata/control.sil
 // and CPYPAT's relocation confirms it, so misc.sil builds a chain by
 // hand and makes LVALUE and LINKOR agree about where its end is.
 func TestMiscellaneousOperations(t *testing.T) { selfChecking(t, "testdata/misc.sil") }
+
+// The input/output and system-dependent batches, which are the first
+// ones the machine cannot check by itself: what the host was asked for
+// is only visible from Go. The program checks what comes back --
+// STREAD's characters, MSTIME's time, DATE's string -- and the host
+// below records what went out.
+//
+// It is also where 7.1's alternatives for the external-function group
+// are exercised end to end: with no LOAD there is nothing to LINK to,
+// so LOAD branches to UNDF and LINK to INTR10, and both labels are in
+// the program.
+func TestInputOutputOperations(t *testing.T) {
+	src, err := os.ReadFile("testdata/io.sil")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h := &ioHost{
+		records: []string{"ABCD", "EF"},
+		time:    1234,
+		date:    []byte("81.092"),
+	}
+	var trace bytes.Buffer
+	vm := assemble(t, src, asm.Options{Host: h, Trace: &trace})
+	vm.MaxCycles = 1000
+
+	if err := vm.Run(); err != nil {
+		t.Fatalf("%v\n%s", err, trace.String())
+	}
+	if vm.Status != 0 {
+		t.Fatalf("check %d failed\n%s", vm.Status, trace.String())
+	}
+
+	// 6.75: the format reached the host with the count the assembler
+	// supplied, and the values are the address fields.
+	if len(h.printed) != 2 {
+		t.Fatalf("the host was given %d records, want 2", len(h.printed))
+	}
+	if got, want := h.printed[0], "(1H ,2I5) 11 22"; got != want {
+		t.Errorf("the first OUTPUT is %q, want %q", got, want)
+	}
+	if got, want := h.printed[1], "(1H1)"; got != want {
+		t.Errorf("the second OUTPUT is %q, want %q", got, want)
+	}
+	// 6.14, 6.30, 6.92 reached the host with the unit the program
+	// named.
+	if got, want := h.moved, "BACKSPACE ENDFILE REWIND "; got != want {
+		t.Errorf("the host was asked for %q, want %q", got, want)
+	}
+	if h.unit != 5 {
+		t.Errorf("the unit is %d, want 5", h.unit)
+	}
+	t.Logf("testdata/io.sil: %d instructions, %d units of core", vm.Cycles, len(vm.Core))
+}
+
+// ioHost is a Host that hands out a fixed sequence of records and
+// keeps everything it is given, so that a test can assert on both
+// halves of the boundary.
+type ioHost struct {
+	records []string
+	time    int
+	date    []byte
+
+	unit    int
+	printed []string
+	moved   string
+}
+
+func (h *ioHost) Print(unit int, format, s []byte) (int, error) {
+	h.unit = unit
+	h.printed = append(h.printed, string(s))
+	return 0, nil
+}
+
+func (h *ioHost) Output(unit int, format []byte, values []int) error {
+	h.unit = unit
+	line := string(format)
+	for _, v := range values {
+		line += fmt.Sprintf(" %d", v)
+	}
+	h.printed = append(h.printed, line)
+	return nil
+}
+
+func (h *ioHost) Read(unit, n int) ([]byte, bool, error) {
+	h.unit = unit
+	if len(h.records) == 0 {
+		return nil, true, nil
+	}
+	r := h.records[0]
+	h.records = h.records[1:]
+	return []byte(r), false, nil
+}
+
+func (h *ioHost) Backspace(unit int) error { return h.move("BACKSPACE", unit) }
+func (h *ioHost) EndFile(unit int) error   { return h.move("ENDFILE", unit) }
+func (h *ioHost) Rewind(unit int) error    { return h.move("REWIND", unit) }
+
+func (h *ioHost) move(what string, unit int) error {
+	h.unit, h.moved = unit, h.moved+what+" "
+	return nil
+}
+
+func (h *ioHost) Time() int    { return h.time }
+func (h *ioHost) Date() []byte { return h.date }
