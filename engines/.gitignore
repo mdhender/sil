@@ -6,4 +6,4 @@
 *
 !.gitignore
 !README.md
-!engines.go
+!*.go
