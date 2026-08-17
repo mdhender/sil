@@ -58,6 +58,12 @@ const (
 	Opcodes    = 131  // distinct mnemonics: 119 operations and 12 directives
 )
 
+// Manual is the module-relative path of a text extraction of S4D58,
+// the primary instruction-set reference. It is gitignored for the same
+// reason the engine source is -- references/MANIFEST.md records where
+// to obtain it -- so a test that reads it skips on ErrAbsent too.
+const Manual = "references/s4d58-sil-v3.11.txt"
+
 // ErrAbsent reports that the source is not in this checkout.
 var ErrAbsent = errors.New("engine source not present in this checkout")
 
@@ -66,15 +72,21 @@ const SkipMessage = "not present in this checkout; see references/MANIFEST.md fo
 
 // Load returns the path and contents of the SIL source of SNOBOL4,
 // wrapping ErrAbsent when the file is missing.
-func Load() (name string, src []byte, err error) {
+func Load() (name string, src []byte, err error) { return read(Engine) }
+
+// LoadManual returns the path and contents of the text extraction of
+// S4D58, wrapping ErrAbsent when the file is missing.
+func LoadManual() (name string, src []byte, err error) { return read(Manual) }
+
+func read(rel string) (name string, src []byte, err error) {
 	root, err := moduleRoot()
 	if err != nil {
 		return "", nil, err
 	}
-	name = filepath.Join(root, Engine)
+	name = filepath.Join(root, rel)
 	src, err = os.ReadFile(name)
 	if os.IsNotExist(err) {
-		return name, nil, fmt.Errorf("%s: %w", Engine, ErrAbsent)
+		return name, nil, fmt.Errorf("%s: %w", rel, ErrAbsent)
 	}
 	if err != nil {
 		return name, nil, err

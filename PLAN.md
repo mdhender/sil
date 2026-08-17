@@ -54,12 +54,12 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M4  | Instruction table and shape validation     | **done**                           | `pkg/sil/op`                        |
 | M5  | First vertical slice runs                  | **done**                           | `pkg/sil`, `pkg/sil/asm`            |
 | M6  | Instruction batches by §7.5 classification | **done** — 116 of 119; the other three are M7 | `pkg/sil` |
-| M7  | Syntax tables and `STREAM`                 | in progress — the three operations are done; Appendix A remains | `pkg/sil` |
-| M8  | The historical source assembles clean      | TODO                               |                                     |
+| M7  | Syntax tables and `STREAM`                 | **done** | `pkg/sil`, `pkg/sil/syntab` |
+| M8  | The historical source assembles clean      | **done** | `pkg/sil/asm` |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                               |                                     |
 | M10 | First SNOBOL4 program                      | TODO                               |                                     |
 
-The front end (M0–M3) is complete: the whole 6,580-line source scans, parses and resolves with no diagnostics, the 37 undefined names it derives are exactly the machine-dependent contract, and with the three COPY segments in it lays out into 16,506 address units with every symbol valued and every expression well formed.
+The front end (M0–M3) is complete: the whole 6,580-line source scans, parses and resolves with no diagnostics, the 37 undefined names it derives are exactly the machine-dependent contract, and with the three COPY segments in it lays out into 17,216 address units with every symbol valued and every expression well formed.
 
 Two measurements in this plan were taken from an early census and turned out to be wrong once a real parse existed. The source contains **unary minus** (`GETAC TVAL,PDLPTR,-2*DESCR`, lines 2694 and 2706), and **536** statements carry null operands rather than 668 — the difference is 123 lone-comma statements, which S4D58 7.6 defines as *no operands* rather than empty ones, plus 9 whose only nulls sit inside parenthesised lists.
 
@@ -206,9 +206,22 @@ The three operations are done, in `pkg/sil/syntax.go`, and the exit criterion is
 - **§4.2 lists six actions and only three need code.** `CONTIN`, `GOTO(TABLE)` and `PUT(ADDRESS)` are not indicators: `CONTIN` and `GOTO` both say which table reads the next character, which is the entry's address field either way — §6.19's figure for `CLERTB CONTIN` sets that field to the table itself, so "the current table" and "some other table" are one mechanism — and `PUT` is the value field, which `STREAM` carries along and drops into `STYPE`. Only `STOP`, `STOPSH` and `ERROR` stop the streaming.
 - **§6.116's transfer sentence drops a clause.** It reads "if TJ is ERROR, transfer is to ERRROR, while if if TJ is STOPSH, transfer is to SLOC. Otherwise transfer is to RUNOUT", which leaves `STOP` nowhere to go and makes `RUNOUT` mean two things. The sentence before it defines J over "ERROR, STOP, or STOPSH" and the figures give `STOP` its own arm, so it reads "STOP or STOPSH", and `RUNOUT` is the case where no such J exists. Note 2 confirms it from the edge: the null string is `RUNOUT`.
 
-Still to do: the twenty-five tables of Appendix A as MDATA content. The exit criterion does not need them — `SNABTB` is built at run time — but M8 and M9 do.
+The twenty-five tables of Appendix A follow in `pkg/sil/syntab`, and the assembler loads them.
+
+**The appendix is held verbatim and expanded at load time.** §4.2 asks for exactly that: the tables "are generated from such descriptions using a (SNOBOL4) program in which the character classes and the order of the internal character codes are parameters. The use of some kind of automatic technique to generate the syntax tables is advisable, both to ensure accuracy and because of the large amount of data involved." So `syntab.Appendix` is the 163 lines of the appendix as written — a corpus test compares them against the manual line by line and they match exactly — with a parser for the `BEGIN/FOR/ELSE/END` language and §4.1's character classes in ASCII beside it. The two parameters §4.2 names are the two things supplied over the appendix: the classes, and `ALPHSZ`.
+
+The expansion happens in two steps, which is how §6.20 note 1's "COPY may simply expand into the data required" is split here: `MDATA` declares each table as `ARRAY ALPHSZ`, the right storage with nothing in it, and `pkg/sil/asm` fills the three fields of every entry after emission. The alternative — generating 6,400 lines of `DESCR` into `MDATA` — was rejected because a table's `PUT` codes are symbols of the SNOBOL4 source rather than of the segments, and `copyseg`'s contract test exists to keep the segments from reaching into the program.
+
+Two things the descriptions turn out to guarantee, and are checked rather than assumed:
+
+- **No table names two classes that share a character**, though the classes themselves overlap freely — `DOT`, `BREAK` and `CNT` all contain the full stop, and `TERMINATOR` contains `BLANK`. The appendix never says which line would win, so `Build` refuses an overlap instead of guessing a precedence rule.
+- **Every `GOTO` names a table the appendix describes**, and every class a description names is one §4.1 defines — in both directions, which is what catches a class transcribed under the wrong name. All 35 of §4.1's classes are used and all 54 `PUT` symbols are defined by the SNOBOL4 source.
 
 **M8 — The historical source assembles clean.** *Exit:* zero diagnostics over 6,580 lines; entry point is the address of `BEGIN` (line 303, `BEGIN INIT ,` — §6.46 makes `INIT` the first instruction executed; `MLINK` supplies nothing the machine needs); a core listing is byte-stable across runs.
+
+Done, in `pkg/sil/asm`'s corpus test. All three criteria hold: the 6,580 lines go to 17,216 units of core with no diagnostics, `BEGIN` is at address 0 — everything above line 303 is `TITLE`, `COPY` and `EQU`, which assemble nothing — and two assemblies of the same source give byte-identical listings. Every cell in core cites the line that assembled it, and all twenty-five syntax tables are filled with what Appendix A says they hold.
+
+It fell out of M6 and M7 rather than needing work of its own, which is what the front-end-first order was for: M2's symbol gate, M3's layout and M4's shape check had each already been run over the whole source, so the only thing M8 added was emission, and the only thing emission needed was the operations.
 
 **M9 — Execution to first trap, then to `ENDEX`.** *Exit:* every halt is a documented `ENDEX` or a named unimplemented opcode. Track instructions-executed-before-first-trap as a monotone number in the changelog.
 

@@ -51,6 +51,7 @@ import (
 	"github.com/mdhender/sil/pkg/sil/op"
 	"github.com/mdhender/sil/pkg/sil/parser"
 	"github.com/mdhender/sil/pkg/sil/scanner"
+	"github.com/mdhender/sil/pkg/sil/syntab"
 )
 
 // Options control what the assembler does besides assembling. The zero
@@ -166,6 +167,7 @@ func emit(stmts []parser.Statement, lay *layout.Layout, opts Options) (*sil.VM, 
 	for i, s := range stmts {
 		e.statement(s, lay.Placement(i))
 	}
+	e.syntaxTables()
 
 	entry := opts.Entry
 	if entry == "" {
@@ -454,6 +456,59 @@ func (e *emitter) put(at int, c sil.Cell) {
 		return
 	}
 	e.vm.Core[at] = c
+}
+
+// syntaxTables fills in the contents of every syntax table the
+// assembly declares.
+//
+// 6.20 note 1 says COPY "may simply expand into the data required",
+// and MDATA declares the twenty-five tables of Appendix A as
+// ARRAY ALPHSZ -- the right amount of storage, with nothing in it. The
+// contents cannot be written as SIL text, because a table entry is
+// generated data rather than something a person types: 4.2 says so
+// itself, recommending "some kind of automatic technique ... both to
+// ensure accuracy and because of the large amount of data involved".
+// So the expansion happens in two steps, and this is the second.
+//
+// It runs over the tables Appendix A describes, not over the ones the
+// assembly happens to define, and skips any the assembly does not
+// declare: a test program that wants one table should not have to
+// carry twenty-four others. What it will not do is leave a declared
+// table half filled -- a name a description needs and the assembly
+// does not define is a diagnostic.
+//
+// Only the three fields of an entry are written. The cells keep the
+// source line the ARRAY assembled them from, so a core listing still
+// says where the storage came from.
+func (e *emitter) syntaxTables() {
+	alphsz, ok := e.lay.Addr("ALPHSZ")
+	if !ok {
+		return // no PARMS, so no character set and no tables
+	}
+	value := func(name string) (int, bool) { return e.lay.Addr(name) }
+
+	for _, name := range syntab.Names() {
+		at, ok := e.lay.Addr(name)
+		if !ok {
+			continue
+		}
+		entries, err := syntab.Build(name, alphsz, value)
+		if err != nil {
+			e.ds.Addf("Appendix A", 0, 0, "%v", err)
+			continue
+		}
+		for i, entry := range entries {
+			a := at + i*e.vm.Descr
+			if a < 0 || a >= len(e.vm.Core) {
+				e.ds.Addf("Appendix A", 0, 0,
+					"%s needs %d entries from %d, which does not fit in the %d units of core",
+					name, len(entries), at, len(e.vm.Core))
+				break
+			}
+			c := &e.vm.Core[a]
+			c.A, c.F, c.V = entry.Next, entry.Indicator, entry.Put
+		}
+	}
 }
 
 // Listing renders core the way an assembly listing would, one line per

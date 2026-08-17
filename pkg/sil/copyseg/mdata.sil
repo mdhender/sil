@@ -18,6 +18,15 @@
 *      their initial values.  Nothing in the SNOBOL4 source reads any
 *      of these regions before the loader has filled them.
 *
+*      The syntax tables are filled by pkg/sil/asm, from the
+*      descriptions of Appendix A held in pkg/sil/syntab.  4.2 asks for
+*      exactly that: the tables "are generated from such descriptions
+*      using a (SNOBOL4) program in which the character classes and the
+*      order of the internal character codes are parameters.  The use
+*      of some kind of automatic technique to generate the syntax
+*      tables is advisable, both to ensure accuracy and because of the
+*      large amount of data involved."
+*
 *      6.20 note 1 permits this: "COPY may be implemented in a variety
 *      of ways.  COPY may, for example, simply expand into the data
 *      required, depending on the value of its argument."
