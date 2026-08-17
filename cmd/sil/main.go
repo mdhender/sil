@@ -56,8 +56,20 @@
 // the system's own messages go through OUTPUT (6.75). Both go under a
 // FORTRAN IV format, which pkg/fortran reads, so both come out
 // typeset; keeping them apart is what makes the program's output the
-// only thing on standard output. Use -merge for the single stream the
-// original printed, in the order it printed it.
+// only thing on standard output.
+//
+// -out and -system move them. Each takes a comma-separated list of
+// places -- stdout, stderr, none, or a file -- and the stream goes to
+// every one:
+//
+//	sil -out run.txt hello.sno              # the printing to a file
+//	sil -out stdout,run.txt hello.sno       # and to standard output
+//	sil -system none hello.sno              # no banner, no statistics
+//	sil -out log -system log hello.sno      # both, in the order written
+//
+// A file named by both flags is opened once, so the last of those is
+// the single stream the original printed. -merge is shorthand for
+// -system stdout and does the same thing on the terminal.
 package main
 
 import (
@@ -95,14 +107,16 @@ func run(args []string, stdout, stderr io.Writer) (int, error) {
 		max     = fs.Int("max", 0, "stop after this many instructions; 0 does not stop")
 		dynamic = fs.Int("dynamic", 0, "descriptors of dynamic storage; 0 takes the default")
 		stack   = fs.String("stack", "", "descriptors of interpreter stack, as 35000 or 35k; empty keeps what the SIL source chose")
-		merge   = fs.Bool("merge", false, "put the system's own output on standard output, with the program's")
+		merge   = fs.Bool("merge", false, "shorthand for -system stdout")
+		outTo   = fs.String("out", defOut, "where what the program printed goes: "+destinationHelp)
+		sysTo   = fs.String("system", defSyste, "where the system's own output goes: "+destinationHelp)
 	)
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "usage: sil [flags] [program.sno ...]\n\n"+
 			"Runs a SNOBOL4 program on the historical Macro SNOBOL4 implementation.\n"+
 			"With no files, the program is read from standard input.\n\n"+
 			"Standard output is what the program printed. Standard error is what the\n"+
-			"SNOBOL4 system printed about itself.\n\nFlags:\n")
+			"SNOBOL4 system printed about itself. -out and -system move either one.\n\nFlags:\n")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -123,11 +137,24 @@ func run(args []string, stdout, stderr io.Writer) (int, error) {
 	}
 	defer closeInput()
 
-	system := io.Writer(stderr)
+	// -merge came first and is kept, because it is the whole of what
+	// most people want the destinations for: the single stream the
+	// original printed, in the order it printed it. It is now
+	// shorthand, and saying both is a contradiction rather than a
+	// precedence to remember.
 	if *merge {
-		system = stdout
+		if given(fs, "system") {
+			return 0, fmt.Errorf("-merge is shorthand for -system %s; give one or the other", stdName)
+		}
+		*sysTo = stdName
 	}
-	host := &host{out: stdout, system: system, in: program, printer: -1}
+	printed, reported, closeStreams, err := streams(*outTo, *sysTo, stdout, stderr)
+	if err != nil {
+		return 0, err
+	}
+	defer closeStreams()
+
+	host := &host{out: printed, system: reported, in: program, printer: -1}
 
 	traced, closeTrace, err := create(*trace)
 	if err != nil {
@@ -174,11 +201,27 @@ func run(args []string, stdout, stderr io.Writer) (int, error) {
 	// no dump here, which 6.29 note 1 allows -- "&ABEND will not have
 	// its specified effect. Nothing else will be affected" -- so the
 	// request is reported rather than silently dropped.
+	//
+	// This goes to standard error whatever -system says, because it is
+	// the runner speaking and not the SNOBOL4 system. Everything
+	// prefixed sil: is ours.
 	if vm.Status != 0 {
 		fmt.Fprintf(stderr, "sil: the program set &ABEND to %d, and this machine has no core dump to give\n",
 			vm.Status)
 	}
 	return 0, nil
+}
+
+// given reports whether a flag was named on the command line, which is
+// not the same as its having a value: every flag has one.
+func given(fs *flag.FlagSet, name string) bool {
+	found := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
 
 // equates turns the sizing flags into the EQU overrides the assembler
