@@ -287,6 +287,18 @@ func (s *VM) execute(c Cell) error {
 		return s.STPRNT(c.Ops[0], c.Ops[1], c.Ops[2])
 	case op.SUM:
 		s.SUM(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.SUBTRT:
+		s.SUBTRT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.MULT:
+		s.MULT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.MULTC:
+		s.MULTC(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.DIVIDE:
+		s.DIVIDE(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.EXPINT:
+		s.EXPINT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.MNSINT:
+		s.MNSINT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
 	default:
 		return s.fault("%s is not implemented", c.Op)
 	}

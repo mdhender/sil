@@ -496,19 +496,12 @@ const bcdField = 4
 //  2. See also SUBTRT.
 //
 // The range available for integers is SIZLIM, which PARMS chooses. A
-// sum outside it takes FLOC.
+// sum outside it takes FLOC and alters nothing, which is what arith
+// does for the whole of 7.5's integer arithmetic group.
 //
 // S4D58.PDF: 6.120
 func (s *VM) SUM(descr1, descr2, descr3, floc, sloc int) {
-	src := s.Core[descr2]
-	sum := src.A + s.Core[descr3].A
-	if limit, ok := s.Symbols["SIZLIM"]; ok && (sum > limit || sum < -limit) {
-		s.PC = floc
-		return
-	}
-	dst := &s.Core[descr1]
-	dst.A, dst.F, dst.V = sum, src.F, src.V
-	s.PC = sloc
+	s.arith(descr1, descr2, s.Core[descr2].A+s.Core[descr3].A, true, floc, sloc)
 }
 
 // descriptorAt reads the three descriptor fields of a cell, leaving

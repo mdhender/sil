@@ -1,0 +1,80 @@
+       TITLE   'Integer arithmetic'
+       COPY    PARMS
+*
+*      6.119, 6.72, 6.73, 6.26, 6.32, 6.64 and 6.120.  Each result is
+*      compared against a constant with ACOMPC, and each failure arm
+*      is checked by arranging for it to be taken.  WHICH carries the
+*      number of the check.
+*
+STSIZE EQU     4
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+       SETAC   XCL,40
+       SETAC   YCL,2
+       SUM     ZCL,XCL,YCL,FAIL
+       SETAC   WHICH,1
+       ACOMPC  ZCL,42,FAIL,,FAIL    6.120
+       SUBTRT  ZCL,XCL,YCL,FAIL
+       SETAC   WHICH,2
+       ACOMPC  ZCL,38,FAIL,,FAIL    6.119
+       MULT    ZCL,XCL,YCL,FAIL
+       SETAC   WHICH,3
+       ACOMPC  ZCL,80,FAIL,,FAIL    6.72
+       MULTC   ZCL,XCL,3
+       SETAC   WHICH,4
+       ACOMPC  ZCL,120,FAIL,,FAIL   6.73
+       DIVIDE  ZCL,XCL,YCL,FAIL
+       SETAC   WHICH,5
+       ACOMPC  ZCL,20,FAIL,,FAIL    6.26
+       MNSINT  ZCL,YCL,FAIL
+       MNSINT  ZCL,ZCL,FAIL
+       SETAC   WHICH,6
+       ACOMPC  ZCL,2,FAIL,,FAIL     6.64, twice over
+       SETAC   YCL,10
+       EXPINT  ZCL,TWOCL,YCL,FAIL
+       SETAC   WHICH,7
+       ACOMPC  ZCL,1024,FAIL,,FAIL  6.32
+*
+*      6.26: dividing by zero takes FLOC.  Reaching DIVOK means it
+*      did not.
+*
+       SETAC   YCL,0
+       SETAC   WHICH,8
+       DIVIDE  ZCL,XCL,YCL,DIVOK,FAIL
+DIVOK  LHERE   ,
+*
+*      6.32: zero to a nonpositive power takes FLOC.
+*
+       SETAC   ZEROCL,0
+       SETAC   WHICH,9
+       EXPINT  ZCL,ZEROCL,ZEROCL,EXPOK,FAIL
+EXPOK  LHERE   ,
+*
+*      6.120: a sum outside SIZLIM takes FLOC and alters nothing.
+*
+       SETAC   XCL,SIZLIM
+       SETAC   ZCL,7
+       SETAC   WHICH,10
+       SUM     ZCL,XCL,ONECL,SUMOK,FAIL
+SUMOK  LHERE   ,
+       SETAC   WHICH,11
+       ACOMPC  ZCL,7,FAIL,,FAIL     still what it was
+*
+       SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+ZEROCL DESCR   0,0,0
+ONECL  DESCR   1,0,0
+TWOCL  DESCR   2,0,0
+WHICH  DESCR   0,0,0
+XCL    DESCR   0,0,0
+YCL    DESCR   0,0,0
+ZCL    DESCR   0,0,0
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR
+       ARRAY   STSIZE
+       END

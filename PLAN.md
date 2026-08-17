@@ -53,7 +53,7 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
 | M4  | Instruction table and shape validation     | **done**             | `pkg/sil/op`      |
 | M5  | First vertical slice runs                  | **done**             | `pkg/sil`, `pkg/sil/asm` |
-| M6  | Instruction batches by §7.5 classification | in progress — 5 of 10 batches | `pkg/sil`        |
+| M6  | Instruction batches by §7.5 classification | in progress — 60 of 119 operations | `pkg/sil`        |
 | M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
 | M8  | The historical source assembles clean      | TODO                 |                   |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
@@ -137,6 +137,12 @@ LGT    PROC    ,
 `LGT(X,Y)` succeeds when X is lexically greater, and `RETNUL` is how a primitive succeeds, so `GTLOC` means `SPEC1` greater. Implemented that way, with the deviation recorded in the method's doc comment and checked by `compare.sil`.
 
 Flags are set and reset bitwise rather than by the addition §6.101 and §6.91 write, because their own note 1 -- "the other flags are left unchanged" -- and §3.1.2's "a set of bits that are individually tested, turned on, and turned off" require it: adding a flag already present would carry into the next one.
+
+The integer arithmetic group follows in `pkg/sil/integers.go`: `SUBTRT` `MULT` `MULTC` `DIVIDE` `EXPINT` `MNSINT`, joining `SUM`, `INCRA` and `DECRA`. They share one helper, which is what keeps a failed operation from leaving a half-computed descriptor behind: out of range takes `FLOC` and writes nothing. `pkg/sil/asm/testdata/integers.sil` checks each result and each failure arm from SIL.
+
+§6.32 does not say what a nonzero base raised to a negative power gives. Its own words settle it rather than a guess: `FLOC` is taken "if the result is out of the range available for integers", and a proper fraction is not an integer at all — except for the two bases whose negative powers still are, 1 and −1.
+
+**Remaining, by §7.5 group:** specifiers (17, less `STREAM` which is M7), real numbers (11), miscellaneous (9), I/O (5), OS-dependent (5), tree and pattern nodes (5), the rest of the stack group (`PSTACK`, `SELBRA`, `BRANIC`, `SPOP`, `SPUSH`), and `CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
 
 **M7 — Syntax tables and `STREAM`.** `STREAM` (35 sites), `PLUGTB`/`CLERTB` (4+4), MDATA generated from Appendix A. Lower risk than it looks: §4.2 states only `SNABTB` is ever mutated, so tables are immutable data with one exception.
 *Exit:* a SIL program that plugs `SNABTB`, runs `STREAM`, and reproduces `ANY`/`BREAK`/`NOTANY`/`SPAN`.

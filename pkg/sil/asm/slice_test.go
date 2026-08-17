@@ -298,3 +298,9 @@ func selfChecking(t *testing.T, path string) {
 	}
 	t.Logf("%s: %d instructions, %d units of core", path, vm.Cycles, len(vm.Core))
 }
+
+// The integer arithmetic batch of S4D58 7.5, checked the same way.
+// Each failure arm is checked by arranging for it to be taken: a
+// division by zero, zero to the zeroth power, and a sum outside
+// SIZLIM, which must also leave its result descriptor alone.
+func TestIntegerArithmeticOperations(t *testing.T) { selfChecking(t, "testdata/integers.sil") }
