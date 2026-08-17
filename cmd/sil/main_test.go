@@ -1,29 +1,29 @@
-// Command sil runs SNOBOL4 programs.
-//
-// It carries the historical Macro SNOBOL4 implementation -- 6580 lines
-// of SIL, the machine language S4D58 describes -- assembles it, and
-// runs it. The SNOBOL4 program named on the command line is what that
-// implementation then reads and compiles, the way it read a deck of
-// cards.
-//
-//	sil hello.sno
-//	sil < hello.sno
-//	sil -listing core.txt hello.sno
-//
-// The exit status is 0 when the run reached ENDEX, however the program
-// went, and 1 when something stopped it first: a source that would not
-// assemble, a machine fault, a file that would not open. SNOBOL4 has
-// no notion of an exit status to report -- ENDEX's operand is the
-// keyword &ABEND (6.29 note 2), not a status -- and a program whose
-// statements failed is a program that ran.
-//
-// # Where the output goes
-//
-// Standard output is what the program printed. Standard error is what
-// the SNOBOL4 system printed about itself: its banner, whether the
-// program compiled, and the statistics at the end.
-//
-// They are separated because they leave the machine by different
+/*
+ * SIL - SNOBOL Interpretation Language
+ * Copyright (c) 2021, Michael D Henderson
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 package main
 
@@ -88,6 +88,60 @@ func TestRunsAProgram(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "SNOBOL4") {
 		t.Errorf("the banner reached standard output:\n%s", out.String())
+	}
+}
+
+// The system's own output is typeset, not printed as the format
+// strings it was given. This is the whole of pkg/fortran seen from the
+// outside: the banner is Hollerith text under carriage control, the
+// statistics are Iw fields in their columns.
+func TestTheSystemsOutputIsTypeset(t *testing.T) {
+	needsEngine(t)
+
+	var out, errs bytes.Buffer
+	if _, err := run([]string{write(t, "hello.sno", hello)}, &out, &errs); err != nil {
+		t.Fatalf("%v\n%s", err, errs.String())
+	}
+	for _, want := range []string{
+		// 37H1SNOBOL4 ... : the 1 is a new page and is not printed.
+		"\fSNOBOL4 (VERSION 3.11, MAY 19, 1975)",
+		// The underline the banner overprints.
+		"\n_______\n",
+		// 1H0,I15,...: a blank line, then the count in fifteen
+		// columns, then the Hollerith text.
+		"\n              1 WRITES PERFORMED\n",
+		"\n              2 STATEMENTS EXECUTED,       0 FAILED\n",
+	} {
+		if !strings.Contains(errs.String(), want) {
+			t.Errorf("standard error does not have %q:\n%s", want, errs.String())
+		}
+	}
+	// A format string reaching the output would mean it was not read.
+	if strings.Contains(errs.String(), "1H0") || strings.Contains(errs.String(), "I15") {
+		t.Errorf("a format string reached the output:\n%s", errs.String())
+	}
+}
+
+// PUNCH goes to unit 7 under (80A1), where there is no carriage
+// control and the first column is data like any other. Getting that
+// wrong eats the first character of every punched record.
+func TestThePunchHasNoCarriageControl(t *testing.T) {
+	needsEngine(t)
+
+	program := "-UNLIST\n" +
+		"        PUNCH = '1ONE'\n" +
+		"        OUTPUT = '1TWO'\n" +
+		"END\n"
+
+	var out, errs bytes.Buffer
+	if _, err := run([]string{write(t, "punch.sno", program)}, &out, &errs); err != nil {
+		t.Fatalf("%v\n%s", err, errs.String())
+	}
+	// The punched record keeps its 1; the printed one goes under
+	// (1X,132A1), whose leading blank is the carriage control, so its
+	// 1 is text as well.
+	if got, want := out.String(), "1ONE\n1TWO\n"; got != want {
+		t.Errorf("standard output is %q, want %q", got, want)
 	}
 }
 

@@ -1,29 +1,29 @@
-// Command sil runs SNOBOL4 programs.
-//
-// It carries the historical Macro SNOBOL4 implementation -- 6580 lines
-// of SIL, the machine language S4D58 describes -- assembles it, and
-// runs it. The SNOBOL4 program named on the command line is what that
-// implementation then reads and compiles, the way it read a deck of
-// cards.
-//
-//	sil hello.sno
-//	sil < hello.sno
-//	sil -listing core.txt hello.sno
-//
-// # Where the output goes
-//
-// Standard output is what the program printed. Standard error is what
-// the SNOBOL4 system printed about itself: its banner, whether the
-// program compiled, and the statistics at the end.
-//
-// They are separated because they leave the machine by different
-// operations and only one of them is finished. A program's output goes
-// through STPRNT (S4D58 6.114), which hands over the characters of a
-// string; the system's own messages go through OUTPUT (6.75), which
-// hands over a FORTRAN IV format and a list of numbers, and nothing
-// here interprets a FORTRAN format yet. So the system's stream is
-// legible rather than typeset, and keeping it off standard output
-// keeps it out of the program's. Use -merge for the single stream the
+/*
+ * SIL - SNOBOL Interpretation Language
+ * Copyright (c) 2021, Michael D Henderson
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 package main
 
@@ -32,31 +32,45 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/mdhender/sil/pkg/fortran"
 )
 
 // host is what the machine asks the outside world for (S4D58 2.1).
 //
-// One input stream and two output streams, and it ignores the unit
-// reference number on all of them. 2.1 gives the SNOBOL4 system three
-// units -- input, print output and punch output -- and a command-line
-// runner has one place for each direction, so a unit is not a thing
+// One input stream and two output streams. It reads the unit reference
+// number for one thing only: whether the unit is the printer, which is
+// what decides if the first character of a record is carriage control
+// or a character. 2.1 gives the SNOBOL4 system three units -- input,
+// print output and punch output -- and a command-line runner has one
+// place for each direction, so which file a unit is is not a thing
 // this host distinguishes. A host that wanted files per unit would
 // implement the same interface.
+//
+// Both output operations hand over a FORTRAN IV format, which
+// pkg/fortran reads. This is where 2.1 puts that: "Formats used by
+// STPRNT are strings that may be formed during program execution and
+// hence must be accepted in their undigested form", so the machine
+// passes them across untouched and the host is what digests them.
 type host struct {
 	out    io.Writer // what the program printed
 	system io.Writer // what the SNOBOL4 system printed about itself
 	in     io.Reader
 
+	printer int // the unit that carriage control applies to
 	deck    *bufio.Reader
 	started time.Time
 }
 
 // Print writes what a program printed, and what the compiler listed.
-// The format is dropped: 6.114 note 1 calls it a FORTRAN IV format in
-// undigested form, and this host has no interpreter for one. The
-// characters are a whole line either way, so they go out as one.
+// The string goes under the format, which for the SNOBOL4 system's own
+// two is (1X,132A1) on the printer and (80A1) on the punch (6.114).
 func (h *host) Print(unit int, format, s []byte) (int, error) {
-	if err := line(h.out, s); err != nil {
+	records, err := fortran.Chars(format, s)
+	if err != nil {
+		return 0, fmt.Errorf("STPRNT on unit %d: %w", unit, err)
+	}
+	if err := h.write(h.out, unit, records); err != nil {
 		return 0, err
 	}
 	// 6.114 note 3: the condition the output routine signals is not
@@ -64,16 +78,35 @@ func (h *host) Print(unit int, format, s []byte) (int, error) {
 	return 0, nil
 }
 
-// Output writes what the SNOBOL4 system says about itself. Until there
-// is a FORTRAN IV interpreter this is the format and the numbers it
-// would have been given, which is legible rather than typeset.
+// Output writes what the SNOBOL4 system says about itself: its banner,
+// whether the program compiled, and the statistics (6.75).
 func (h *host) Output(unit int, format []byte, values []int) error {
-	out := append([]byte{}, format...)
-	for _, v := range values {
-		out = append(out, ' ')
-		out = fmt.Appendf(out, "%d", v)
+	records, err := fortran.Numbers(format, values)
+	if err != nil {
+		return fmt.Errorf("OUTPUT on unit %d: %w", unit, err)
 	}
-	return line(h.system, out)
+	return h.write(h.system, unit, records)
+}
+
+// write puts records on a stream, taking the first character of each
+// as carriage control when the unit is the printer and as a character
+// when it is not. The punch has no carriage; the SNOBOL4 PUNCH
+// variable goes out under (80A1), where every column is data.
+func (h *host) write(w io.Writer, unit int, records []fortran.Record) error {
+	if unit != h.printer {
+		for _, r := range records {
+			if err := line(w, []byte(r)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	for _, text := range fortran.Lines(records) {
+		if err := line(w, []byte(text)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Read hands over one line of the deck, truncated to what STREAD asked

@@ -30,11 +30,11 @@ package asm_test
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/mdhender/sil/internal/corpus"
+	"github.com/mdhender/sil/pkg/fortran"
 	"github.com/mdhender/sil/pkg/sil/asm"
 )
 
@@ -72,7 +72,9 @@ func TestRunsASNOBOL4Program(t *testing.T) {
 		"        OUTPUT = X\n" +
 		"END\n"
 
-	h := &snobolHost{input: strings.NewReader(program)}
+	// A clock that advances a second on every MSTIME, so that the run
+	// has a duration and the statistics have a real number in them.
+	h := &snobolHost{input: strings.NewReader(program), tick: 1000}
 	var trace bytes.Buffer
 	vm, ds := asm.Assemble(name, src, asm.Options{Host: h, Trace: &trace})
 	if err := ds.Err(); err != nil {
@@ -96,8 +98,21 @@ func TestRunsASNOBOL4Program(t *testing.T) {
 		t.Errorf("the program printed %q, want %q", got, want)
 	}
 	// The system reported no compilation errors and one write, which
-	// is the same fact seen from its own statistics.
-	for _, want := range []string{"NO ERRORS DETECTED IN SOURCE PROGRAM", "WRITES PERFORMED) 1"} {
+	// is the same fact seen from its own statistics. Both are lines
+	// now rather than format strings, so the columns are asserted too.
+	for _, want := range []string{
+		"NO ERRORS DETECTED IN SOURCE PROGRAM",
+		"              1 WRITES PERFORMED",
+		"           1000 MS. COMPILATION TIME",
+		"              2 STATEMENTS EXECUTED,       0 FAILED",
+		// The one real number the system prints, and the whole of
+		// that path: DVREAL divides a thousand milliseconds by two
+		// statements, keeps the answer as IEEE bits in an address
+		// field (3.1.1), OUTPUT hands the bits over as they stand,
+		// and F15.2 is what decides they are a real number and not an
+		// integer.
+		"         500.00 MS. AVERAGE PER STATEMENT EXECUTED",
+	} {
 		if !strings.Contains(h.system.String(), want) {
 			t.Errorf("the system did not report %q\n%s", want, h.system.String())
 		}
@@ -223,26 +238,57 @@ func TestRunsMoreSNOBOL4Programs(t *testing.T) {
 // snobolHost keeps the program's output and the system's apart:
 // STPRNT is what the source-language OUTPUT variable reaches, and
 // OUTPUT is what the system prints about itself.
+//
+// Both go under a FORTRAN IV format, which pkg/fortran reads. That is
+// what makes these tests assert the lines S4D58's system was
+// documented to print rather than the format strings it printed them
+// with, and it is the only place the machine's real numbers meet the
+// interpreter: the average below is computed by DVREAL, kept as bits
+// in an address field, and rendered by F15.2.
 type snobolHost struct {
 	input   *strings.Reader
 	printed bytes.Buffer
 	system  bytes.Buffer
 
-	lines *strings.Reader
+	// tick is what the clock advances by on every MSTIME, so that a
+	// run has a measurable duration without depending on how fast the
+	// machine this is running on happens to be.
+	tick  int
+	clock int
 }
 
+// unitO is the print unit PARMS chooses (6.20), and the one carriage
+// control applies to.
+const unitO = 6
+
 func (h *snobolHost) Print(unit int, format, s []byte) (int, error) {
-	h.printed.Write(s)
-	h.printed.WriteByte('\n')
-	return 0, nil
+	records, err := fortran.Chars(format, s)
+	if err != nil {
+		return 0, err
+	}
+	return 0, h.write(&h.printed, unit, records)
 }
 
 func (h *snobolHost) Output(unit int, format []byte, values []int) error {
-	h.system.Write(format)
-	for _, v := range values {
-		fmt.Fprintf(&h.system, " %d", v)
+	records, err := fortran.Numbers(format, values)
+	if err != nil {
+		return err
 	}
-	h.system.WriteByte('\n')
+	return h.write(&h.system, unit, records)
+}
+
+func (h *snobolHost) write(w *bytes.Buffer, unit int, records []fortran.Record) error {
+	lines := fortran.Lines(records)
+	if unit != unitO {
+		lines = nil
+		for _, r := range records {
+			lines = append(lines, string(r))
+		}
+	}
+	for _, text := range lines {
+		w.WriteString(text)
+		w.WriteByte('\n')
+	}
 	return nil
 }
 
@@ -270,8 +316,11 @@ func (h *snobolHost) Read(unit, n int) ([]byte, bool, error) {
 func (h *snobolHost) Backspace(unit int) error { return nil }
 func (h *snobolHost) EndFile(unit int) error   { return nil }
 func (h *snobolHost) Rewind(unit int) error    { return nil }
-func (h *snobolHost) Time() int                { return 0 }
-func (h *snobolHost) Date() []byte             { return nil }
+func (h *snobolHost) Time() int {
+	h.clock += h.tick
+	return h.clock
+}
+func (h *snobolHost) Date() []byte { return nil }
 
 // tail returns the last n lines, which is what a trace is worth
 // reading when something stops.

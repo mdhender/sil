@@ -47,12 +47,12 @@ import (
 // system-dependent operations that ask the machine's environment
 // rather than a file, MSTIME and DATE.
 //
-// Nothing here interprets a FORTRAN IV format. 2.1: "Formats used by
-// STPRNT are strings that may be formed during program execution and
-// hence must be accepted in their undigested form", so an interpreter
-// belongs on this side of the boundary, and until there is one a host
-// may do what it likes with the format. The machine's job is to find
-// the bytes, not to read them.
+// Nothing here interprets a FORTRAN IV format, and nothing here should.
+// 2.1: "Formats used by STPRNT are strings that may be formed during
+// program execution and hence must be accepted in their undigested
+// form", so the machine's job is to find the bytes and a host's is to
+// read them. pkg/fortran is what reads them; cmd/sil is a host that
+// uses it, and WriterHost below is one that does not.
 type Host interface {
 	// Print writes a string to a unit under a format (6.114).
 	//
@@ -121,8 +121,8 @@ func (h *WriterHost) Print(unit int, format, s []byte) (int, error) {
 
 // Output writes the characters of the format and then the values, in
 // decimal, separated by blanks. This is not a FORTRAN IV interpreter
-// and does not pretend to be one; it is legible, which is what a test
-// needs from it.
+// and does not pretend to be one -- pkg/fortran is, and cmd/sil uses
+// it. This is legible, which is what a test needs from it.
 func (h *WriterHost) Output(unit int, format []byte, values []int) error {
 	line := append([]byte{}, format...)
 	for _, v := range values {

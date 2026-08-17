@@ -234,7 +234,7 @@ Done. The number was tracked twice and then stopped being interesting:
 
 Done, in `pkg/sil/asm`'s corpus test. The historical Macro SNOBOL4 implementation compiles the program, executes it, prints `HELLO`, prints its statistics — two statements executed, none failed, one write — and terminates through `ENDEX` at status zero.
 
-The program's own output and the system's are kept apart because they take different paths: the source-language `OUTPUT` variable reaches the host through `STPRNT`, and everything the system says about itself goes through `OUTPUT` (§6.75) under FORTRAN IV formats that nothing here interprets. So the program's stream is asserted exactly and the system's is only searched for "NO ERRORS DETECTED IN SOURCE PROGRAM". Risk 9 is what is left: the banner and the statistics come out as their own format strings. The `-UNLIST` control card is in the test program so that the compilation listing, which shares the `STPRNT` path, does not mix into the program's output — and getting that far exercises `CARDTB`, the syntax table that tells a control card from a statement.
+The program's own output and the system's are kept apart because they take different paths: the source-language `OUTPUT` variable reaches the host through `STPRNT`, and everything the system says about itself goes through `OUTPUT` (§6.75). Both go under a FORTRAN IV format, which `pkg/fortran` reads, so the test asserts the lines the system was documented to print — "NO ERRORS DETECTED IN SOURCE PROGRAM", `              1 WRITES PERFORMED` — rather than the format strings it printed them with. The `-UNLIST` control card is in the test program so that the compilation listing, which shares the `STPRNT` path, does not mix into the program's output — and getting that far exercises `CARDTB`, the syntax table that tells a control card from a statement.
 
 Eight more programs run alongside it, each reaching a subsystem the first does not: integer arithmetic with precedence, concatenation, `SIZE`, real arithmetic through `SPREAL`/`ADREAL`/`REALST`, pattern matching, `SPAN` through `CLERTB`/`PLUGTB`/`STREAM` over `SNABTB`, `REPLACE` through `RPLACE`, a loop through the interpreter's goto field, and a defined function, which is the call model of M5 running under the SNOBOL4 compiler rather than under a test program. All nine give the right answer.
 
@@ -242,10 +242,27 @@ Eight more programs run alongside it, each reaching a subsystem the first does n
 
 The ten milestones are done. What the machine does not have:
 
-- **A FORTRAN IV format interpreter** (risk 9). `Host.Print` and `Host.Output` both take the format undigested, which is where §2.1 puts the boundary, and nothing on the far side reads one. The effect is that the system's banner, its error messages and its statistics come out as format strings with the values beside them. Nothing a SNOBOL4 program prints goes through a format, so the programs above are unaffected.
+- ~~A FORTRAN IV format interpreter~~ (risk 9). Done; see below.
 - ~~A runner.~~ Done. `engines/engines.go` embeds the SIL source and `cmd/sil` runs SNOBOL4 programs on it: `sil hello.sno` prints `HELLO`. Standard output is what the program printed and standard error is what the system printed about itself, because the two leave the machine by different operations — `STPRNT` hands over the characters of a string, `OUTPUT` hands over a FORTRAN format — and only one of them is finished. `-merge` gives the single stream the original printed. Reaching `ENDEX` is exit 0 whatever the program did; `ENDEX`'s operand is the keyword `&ABEND` (§6.29 note 2), not a status, and a nonzero one is reported rather than silently dropped, since this machine has no core dump to give (§6.29 note 1 allows that).
 - **`ORDVST`**, which is §6.74 note 1's documented alternative rather than the operation; the post-run dump is unalphabetized. See the miscellaneous batch.
 - **`LOAD`, `LINK` and `UNLOAD`**, which are §7.1's alternatives for a machine with no external functions.
+
+## The FORTRAN IV format interpreter
+
+`pkg/fortran`, and risk 9 with it. The boundary did not move: `Host.Print` and `Host.Output` still take the format undigested, which is where §2.1 puts it — "formats used by `STPRNT` are strings that may be formed during program execution and hence must be accepted in their undigested form" — and `cmd/sil` is a host that reads them.
+
+This is the one part of the system S4D58 does not specify. §6.114 note 1 and §6.34 both say "FORTRAN IV format" and stop; the specification is ANSI X3.9-1966 §7. What settles the reading is that the source's own formats produce what the system was documented to print, so the tests are those formats with the values the system passes them.
+
+Six things are needed and all six are in the source's twenty-six `FORMAT` statements and two format strings: Hollerith literals, `Iw`, `Fw.d`, `Aw`, `nX` and `/`, with repeat counts and groups. `Ew.d` and quoted literals are there too, because §2.1 lets a SNOBOL4 program build a format at run time; anything else is an error that names itself rather than a field quietly printed wrong.
+
+Four things were not obvious:
+
+- **Numbers arrive as bits and the format decides what they are.** §6.75 gives `OUTPUT` "the conversion of integers and real numbers given in the address fields", and §3.1.1 puts both in the same field, so which one a value is cannot be read off the value — `I` or `F` is what says. `(1H0,F15.2,...)` is the only real field the system has, and it is fed by `DVREAL`; the corpus test drives it with a clock that ticks a second per `MSTIME` and asserts `         500.00 MS. AVERAGE PER STATEMENT EXECUTED`, which is the whole of that path in one line.
+- **A Hollerith count is where a comma stops being a separator.** `(1H0,I15,21H STATEMENTS EXECUTED,,I8,7H FAILED)` looks like it has an empty field. It does not: the twenty-one characters end with the comma, and the `,,` is that comma followed by the separator. `(42H0BELL TELEPHONE LABORATORIES, INCORPORATED,/1H1)` is the same trick the other way — the count stops one short of the trailing comma.
+- **Carriage control belongs to the printer, not to the format.** The first character of a record says how far to advance and is not printed. So it is applied by `Lines` and only for the print unit: the SNOBOL4 `PUNCH` variable goes out on unit 7 under `(80A1)`, where column one is data, and eating it would lose the first character of every punched record.
+- **Reversion is what wraps a long line.** Reaching the end of a format with the list unfinished starts a new record and goes back to the last group at the outer level, or to the beginning if there is none. `(1X,132A1)` therefore wraps at 132 columns rather than truncating. The same rule read the other way is what makes it print a five-character string as six characters rather than padding to a hundred and thirty-three: format control stops at the first field the list cannot fill.
+
+Overprinting is the one thing a stream of text cannot do. `+` means "do not advance", and two records on one line is something a printer does with ink; the record gets a line of its own, which is what the one place the system uses it wants anyway — the banner underlines `SNOBOL4` by overprinting seven underscores.
 
 ## The call model (verified against §6.87 / §6.95)
 
@@ -394,7 +411,7 @@ Also carry over from maclo: `Assemble(nodes, Options) (*VM, error)` returning a 
 6. **First-error bailout unusable at 6,580 lines** — M2. maclo's retrospective names this as its own mistake; accumulate per stage.
 7. **Syntax tables** — M7. Appendix A is the spec; budget for 25 tables where the source names only 13.
 8. **`PLUGTB`/`CLERTB`** — M7, and optional per §7.1 (cost: `ANY`/`BREAK`/`SPAN`/`NOTANY`).
-9. **FORTRAN formats** for the 26 `FORMAT` literals — M6 I/O batch, entirely behind `Host.Print`. Still open, and now behind `Host.Output` as well: the boundary holds, and no interpreter exists. `WriterHost` writes the format's characters and the values in decimal, which is legible and is not FORTRAN.
+9. **FORTRAN formats** for the 26 `FORMAT` literals — M6 I/O batch, entirely behind `Host.Print`. Retired, in `pkg/fortran`; the boundary never moved. See below.
 10. **`LOAD`/`UNLOAD`/`LINK`** — one site each, 0.000% execution time. Documented trap, or never. Retired in M6, by §7.1's own alternatives: `UNDF`, `INTR10` and no operation, applied together as footnote 4 requires.
 
 Struck from the risk register by the manual: `BRANCH LOC,PROC` (§6.15) and `PROC ,` vs `PROC name` (§6.78 note 2).

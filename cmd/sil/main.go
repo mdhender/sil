@@ -1,3 +1,30 @@
+/*
+ * SIL - SNOBOL Interpretation Language
+ * Copyright (c) 2021, Michael D Henderson
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 // Command sil runs SNOBOL4 programs.
 //
 // It carries the historical Macro SNOBOL4 implementation -- 6580 lines
@@ -24,13 +51,11 @@
 // program compiled, and the statistics at the end.
 //
 // They are separated because they leave the machine by different
-// operations and only one of them is finished. A program's output goes
-// through STPRNT (S4D58 6.114), which hands over the characters of a
-// string; the system's own messages go through OUTPUT (6.75), which
-// hands over a FORTRAN IV format and a list of numbers, and nothing
-// here interprets a FORTRAN format yet. So the system's stream is
-// legible rather than typeset, and keeping it off standard output
-// keeps it out of the program's. Use -merge for the single stream the
+// operations: a program's output goes through STPRNT (S4D58 6.114) and
+// the system's own messages go through OUTPUT (6.75). Both go under a
+// FORTRAN IV format, which pkg/fortran reads, so both come out
+// typeset; keeping them apart is what makes the program's output the
+// only thing on standard output. Use -merge for the single stream the
 // original printed, in the order it printed it.
 package main
 
@@ -99,7 +124,7 @@ func run(args []string, stdout, stderr io.Writer) (int, error) {
 	if *merge {
 		system = stdout
 	}
-	host := &host{out: stdout, system: system, in: program}
+	host := &host{out: stdout, system: system, in: program, printer: -1}
 
 	traced, closeTrace, err := create(*trace)
 	if err != nil {
@@ -112,6 +137,14 @@ func run(args []string, stdout, stderr io.Writer) (int, error) {
 		return 0, fmt.Errorf("%s: %d diagnostics:\n%v", name, len(ds), err)
 	}
 	vm.MaxCycles, vm.Dynamic = *max, *dynamic
+
+	// Carriage control belongs to the printer, so the host has to know
+	// which unit that is. PARMS names it (6.20), and a SIL source that
+	// does not copy PARMS has no printer, which leaves every unit
+	// taking its records whole.
+	if unit, ok := vm.Symbols["UNITO"]; ok {
+		host.printer = unit
+	}
 
 	if *listing != "" {
 		w, closeListing, err := create(*listing)
