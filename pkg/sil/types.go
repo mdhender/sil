@@ -47,14 +47,15 @@ type characterString struct {
 // descriptor is used to represent all pointers, integers, and real
 // numbers. A descriptor may be thought of as the basic "word" of
 // SNOBOL4. Descriptors consist of three fixed-length fields:
-//   address
-//   flag
-//   value
+//
+//	address
+//	flag
+//	value
+//
 // The size and position of these fields is determined from the data
 // they must represent and the way that they are used in the various
 // operations. The following paragraphs describe some specific
 // requirements.
-//
 //
 // On the IBM System/360, a descriptor is two words (eight bytes).
 // The first word is the address field. The second word consists of
@@ -107,11 +108,13 @@ type descriptor struct {
 // operations performed on character strings are handled through
 // operations on specifiers. All specifiers are the same size and
 // have five fields:
-//   address
-//   flag
-//   value
-//   offset
-//   length
+//
+//	address
+//	flag
+//	value
+//	offset
+//	length
+//
 // Specifiers and descriptors may be stored in the same area
 // indiscriminately, and are indistinguishable to many processes in
 // the SNOBOL4 system. As a result, specifiers are composed of two

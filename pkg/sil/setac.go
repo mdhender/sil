@@ -31,9 +31,13 @@ package sil
 // of a descriptor to a constant.
 //
 // Usage
-//   SETAC DESCR,N
+//
+//	SETAC DESCR,N
+//
 // Data Altered by
-//   DESCR N
+//
+//	DESCR N
+//
 // Programming Notes:
 //  1. N may be a relocatable address.
 //  2. N is often 0, 1, or D.

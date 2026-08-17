@@ -30,13 +30,15 @@ package sil
 // ACOMP (address comparison) is used to compare the address fields
 // of two descriptors. The comparison is arithmetic with A1 and A2
 // being considered as signed integers.
-//   If A1 > A2, transfer is to GTLOC.
-//   If A1 = A2, transfer is to EQLOC.
-//   If A1 < A2, transfer is to LTLOC.
+//
+//	If A1 > A2, transfer is to GTLOC.
+//	If A1 = A2, transfer is to EQLOC.
+//	If A1 < A2, transfer is to LTLOC.
 //
 // Data Input:
-//   DESCR1 A1
-//   DESCR2 A2
+//
+//	DESCR1 A1
+//	DESCR2 A2
 //
 // Programming Notes:
 //  1. A1 and A2 may be relocatable addresses.
@@ -56,12 +58,14 @@ func (s *am) ACOMP(descr1, descr2 descriptor, gtloc, eqloc, ltloc address) {
 // ACOMPC (address comparison with constant) is used to compare the
 // address field of a descriptor to a constant. The comparison is
 // arithmetic with A being considered as a signed integer.
-//   If A > N, transfer is to GTLOC.
-//   If A = N, transfer is to EQLOC.
-//   If A < N, transfer is to LTLOC.
+//
+//	If A > N, transfer is to GTLOC.
+//	If A = N, transfer is to EQLOC.
+//	If A < N, transfer is to LTLOC.
 //
 // Data Input:
-//   DESCR A
+//
+//	DESCR A
 //
 // Programming Notes:
 //  1. A may be a relocatable address.

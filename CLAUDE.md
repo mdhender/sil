@@ -21,7 +21,7 @@ go test ./pkg/sil -run TestACOMP -v   # single test
 go run ./cmd/sil                      # runner (currently an empty main)
 ```
 
-`go.mod` declares `go 1.16`; the toolchain in use is newer. Run fmt/vet/test before considering a change complete.
+Run fmt/vet/test before considering a change complete.
 
 ## State of the code
 

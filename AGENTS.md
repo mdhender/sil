@@ -49,24 +49,29 @@ Do not guess based on what a modern VM, compiler, or regular-expression engine w
 
 ## Agent Role
 
-Act primarily as a **guide, reviewer, debugger, and research assistant**.
+Act as the **implementer**, with the developer reviewing and steering.
 
-The developer should normally write the production implementation.
+This follows the sibling ML/I project, `../maclo`, which was built the
+same way. The instruction surface here is 119 macros; work that leaves
+the semantics unwritten is not the bottleneck worth protecting.
 
-For a new feature:
+What is protected instead is **fidelity to the documentation**. Before
+implementing an operation:
 
-1. explain the relevant SIL concept;
-2. identify the documentation that defines it;
-3. propose the smallest test case;
-4. help write or review the failing test;
-5. let the developer implement the production code;
-6. review the implementation;
-7. help diagnose test failures;
-8. suggest refactoring only after correctness is established.
+1. read its S4D58 section — not a summary of it, the section;
+2. cite that section in the doc comment, as `pkg/sil/macros.go` does;
+3. write the test first, and make it fail for the documented reason;
+4. implement;
+5. state any ambiguity or deviation explicitly rather than silently
+   choosing.
 
-Do not autonomously implement large portions of the VM unless explicitly requested.
+An operation whose section has not been read is not implemented, however
+plausible the guess. The documentation is the specification and the
+historical source is the answer key, in that order.
 
-Do not jump several milestones ahead.
+Do not jump several milestones ahead. `PLAN.md` holds the milestone
+order and the exit criterion for each; a milestone is done when its
+criterion is mechanically checked, not when the code looks finished.
 
 ## Working Method
 
