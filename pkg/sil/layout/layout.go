@@ -37,15 +37,14 @@
 // machine itself -- inherits those choices, so they are checked here
 // against relationships the SNOBOL4 source states about its own data.
 //
-// Two things are deliberately not here.
-//
-// Instruction sizes are one address unit each, which is what the
-// milestone asks for and what all but two operations will keep. RCALL
-// and SELBRA assemble a branch vector after the operation (S4D58 6.87
-// note 5, 6.98), so they take more; that arrives with the instruction
-// table, which is where per-operation knowledge belongs. Until then
-// every address in the code region is provisional. No relationship
-// this stage checks spans the code region, so none of them move.
+// Which of the eight shapes a statement has comes from the instruction
+// table; turning a shape into a number needs DESCR, SPEC and CPA, and
+// that is this package. Every operation is one address unit. RCALL and
+// SELBRA will not stay that way -- both assemble a branch vector after
+// the operation (S4D58 6.87 note 5, 6.98) -- so every address in the
+// code region is provisional until the emitter exists. No relationship
+// this stage checks spans the code region, so none of them move when
+// it does.
 //
 // Nothing is emitted. A Layout says where each statement goes and what
 // each symbol is worth; it holds no cells.
@@ -59,6 +58,7 @@ import (
 	"sort"
 
 	"github.com/mdhender/sil/pkg/sil/diag"
+	"github.com/mdhender/sil/pkg/sil/op"
 	"github.com/mdhender/sil/pkg/sil/parser"
 )
 
@@ -132,24 +132,6 @@ func (l *Layout) Symbols() []string {
 	return out
 }
 
-// Assembly-control and data-assembling directives (S4D58 7.5). These
-// are the only operations whose size is not one address unit, and the
-// only per-operation knowledge in this package.
-const (
-	opTitle  = "TITLE"  // 6.123, no operation
-	opCopy   = "COPY"   // 6.20, expanded before this stage
-	opEqu    = "EQU"    // 6.31, symbol equivalence
-	opLhere  = "LHERE"  // 6.54, location here
-	opProc   = "PROC"   // 6.78, procedure entry; note 2 makes it LHERE
-	opEnd    = "END"    // 6.28, end of assembly
-	opDescr  = "DESCR"  // 6.25, one descriptor
-	opSpec   = "SPEC"   // 6.110, one specifier
-	opArray  = "ARRAY"  // 6.12, N descriptors
-	opBuffer = "BUFFER" // 6.17, N characters
-	opString = "STRING" // 6.117, a specifier and the characters it points at
-	opFormat = "FORMAT" // 6.34, characters only
-)
-
 // Run places every statement and resolves every symbol.
 //
 // Resolution is iterative rather than two-pass, because EQU is not
@@ -192,7 +174,7 @@ func Run(stmts []parser.Statement) (*Layout, diag.List) {
 func (l *Layout) indexEqus(stmts []parser.Statement, ds *diag.List) []int {
 	var equs []int
 	for i, s := range stmts {
-		if s.Op != opEqu {
+		if op.Lookup(s.Op) != op.EQU {
 			continue
 		}
 		if s.Label == "" {
@@ -277,7 +259,7 @@ func (l *Layout) locate(stmts []parser.Statement, ds *diag.List) {
 	lc := Origin
 	ended := false
 	for i, s := range stmts {
-		if s.Label != "" && s.Op != opEqu {
+		if s.Label != "" && op.Lookup(s.Op) != op.EQU {
 			if _, taken := l.values[s.Label]; !taken {
 				l.values[s.Label] = Addr(lc)
 			}
@@ -288,7 +270,7 @@ func (l *Layout) locate(stmts []parser.Statement, ds *diag.List) {
 		}
 		l.place[i] = Placement{Addr: lc, Size: size}
 		lc += size
-		if s.Op == opEnd {
+		if op.Lookup(s.Op) == op.END {
 			ended = true
 		}
 	}
@@ -296,36 +278,42 @@ func (l *Layout) locate(stmts []parser.Statement, ds *diag.List) {
 }
 
 // sizeOf reports how many address units a statement assembles.
+//
+// The instruction table says which of the eight shapes a statement
+// has; this turns the shape into a number, which needs DESCR, SPEC and
+// CPA and so cannot live in the table.
 func (l *Layout) sizeOf(s parser.Statement, ds *diag.List) int {
-	switch s.Op {
-	case opTitle, opEqu, opLhere, opProc, opEnd:
+	k := op.Lookup(s.Op)
+	if k == op.Invalid {
+		ds.Addf(s.File, s.Num, 8, "unknown operation %s: cannot tell how much room it takes", s.Op)
+		return 0
+	}
+	switch op.Get(k).Size {
+	case op.SizeNone:
+		// TITLE, EQU, LHERE, PROC, END and COPY. A COPY that reaches
+		// the location counter was not expanded, which the expander
+		// has already reported; here it just takes no room.
 		return 0
 
-	case opCopy:
-		// Expansion happens before parsing, so a COPY that reaches the
-		// location counter was not recognised. The diagnostic is the
-		// expander's; here it just takes no room.
-		return 0
-
-	case opDescr:
+	case op.SizeDescr:
 		return l.descr
 
-	case opSpec:
+	case op.SizeSpec:
 		return l.spec
 
-	case opArray:
+	case op.SizeArray:
 		return l.count(s, ds) * l.descr
 
-	case opBuffer:
+	case op.SizeBuffer:
 		return l.chars(l.count(s, ds))
 
-	case opString:
+	case op.SizeString:
 		// 6.117 note 1: LOC is the location of the specifier, not the
 		// string. This assembles the string immediately after it,
 		// which the note allows and which keeps a string in one piece.
 		return l.spec + l.chars(l.literal(s, ds))
 
-	case opFormat:
+	case op.SizeChars:
 		return l.chars(l.literal(s, ds))
 
 	default:

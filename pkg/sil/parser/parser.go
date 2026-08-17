@@ -119,16 +119,25 @@ func Parse(lines []scanner.Line) ([]Statement, diag.List) {
 		if l.Comment || l.Op == "" {
 			continue
 		}
-		stmts = append(stmts, Statement{
-			File:     l.File,
-			Num:      l.Num,
-			Text:     l.Text,
-			Label:    l.Label,
-			Op:       l.Op,
-			Operands: ParseOperands(l.File, l.Num, l.Operand, &ds),
-		})
+		stmts = append(stmts, ParseOne(l, &ds))
 	}
 	return stmts, ds
+}
+
+// ParseOne parses the operand field of one scanned line. Pass a nil
+// list to parse without collecting diagnostics.
+func ParseOne(l scanner.Line, ds *diag.List) Statement {
+	if ds == nil {
+		ds = &diag.List{}
+	}
+	return Statement{
+		File:     l.File,
+		Num:      l.Num,
+		Text:     l.Text,
+		Label:    l.Label,
+		Op:       l.Op,
+		Operands: ParseOperands(l.File, l.Num, l.Operand, ds),
+	}
 }
 
 // ParseOperands parses one variable field.

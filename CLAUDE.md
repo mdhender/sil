@@ -25,14 +25,15 @@ Run fmt/vet/test before considering a change complete.
 
 ## State of the code
 
-`PLAN.md` holds the milestone table and is the authority on what is done. As of M3 the assembler front end is complete and there is still no instruction table, emitter, image, or fetch/execute loop.
+`PLAN.md` holds the milestone table and is the authority on what is done. As of M4 the assembler front end and the instruction table are complete; there is no emitter, image, or fetch/execute loop.
 
 - `pkg/sil/diag` — accumulated diagnostics with source locations. Every stage appends and keeps going.
 - `pkg/sil/scanner` — columns to fields (S4D58 §7.6). Knows no operations.
 - `pkg/sil/parser` — the operand field to items and expressions. Knows no operations.
 - `pkg/sil/copyseg` — the `PARMS`, `MLINK` and `MDATA` segments as embedded SIL text, and `COPY` expansion into the line stream. This is where every machine-dependent constant is chosen. The only per-operation knowledge in the front end.
 - `pkg/sil/symtab` — definitions and references; closes the reference graph without any operation knowledge.
-- `pkg/sil/layout` — the location counter and symbol values, with the relocatable/absolute discipline. Knows the twelve directives of §7.5 and sizes everything else at one address unit.
+- `pkg/sil/op` — the instruction table: all 131 operations of §6 with their operand signatures, §7.5 classification, size shape and section citation. One table; `Lookup`, `String`, the shape checker and the location counter all read it. Do not add a parallel enum, stringer, or lookup file.
+- `pkg/sil/layout` — the location counter and symbol values, with the relocatable/absolute discipline. Reads sizes from `op`.
 - `pkg/sil` — the abstract machine. `am` in `types.go` currently holds only `pc`. `descriptor`, `specifier`, `characterString`, and `syntaxTableEntry` are transcribed from S4D58 §3 and carry the documentation in their comments. Not yet connected to the front end.
 - `cmd/sil` — the runner entry point; empty.
 - `internal/corpus` — locates the historical source for tests and holds the counts they assert. Corpus tests skip when it is absent; **a skip is not a pass**.

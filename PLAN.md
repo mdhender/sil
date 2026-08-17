@@ -51,8 +51,8 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M1  | Operand parser                             | **done** — `adbbae0` | `pkg/sil/parser`  |
 | M2  | The symbol gate                            | **done** — `c1a4ccc` | `pkg/sil/symtab`  |
 | M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
-| M4  | Instruction table and shape validation     | next                 |                   |
-| M5  | First vertical slice runs                  | TODO                 |                   |
+| M4  | Instruction table and shape validation     | **done**             | `pkg/sil/op`      |
+| M5  | First vertical slice runs                  | next                 |                   |
 | M6  | Instruction batches by §7.5 classification | TODO                 |                   |
 | M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
 | M8  | The historical source assembles clean      | TODO                 |                   |
@@ -90,6 +90,15 @@ Risk 3 is retired further than planned: the whole assembly is rerun with `DESCR=
 
 **M4 — Instruction table and shape validation.** Still no semantics.
 *Exit:* all 4,832 statements type-check against the table. Free oracle: for each of the 516 `*_` markers, the preceding statement's entry has `Terminates: true` (353 are `BRANCH`; the rest must be `BRANIC`, `RRTURN`, `SELBRA` with all slots filled, or `ENDEX`).
+
+Done, in `pkg/sil/op`. All 4,832 statements fit, and the source uses all 131 entries. Four corrections the transcription of §6's boxes did not predict, each confirmed against the section before being made: `RRTURN`'s `DESCR` (§6.95 note 2), `MAKNOD`'s `DESCR6` (§6.62), `OUTPUT`'s argument list (undocumented, but `N=0` is what an omitted list means and 15 sites rely on it), and `BRANCH`'s `LOC`, which §5.2's blanket rule would have made optional and §6.15 does not.
+
+The `*_` oracle turned out weaker than the plan assumed and a second, much stronger one turned up:
+
+- `Terminates` is true for four operations, not five. §6.87 note 6 and §6.98 note 2 both let `RCALL` and `SELBRA` pass control to the operation following, even with every location supplied, so the 55 markers after them are claims about what the called procedure returns. The check that does hold over all 516 is "the preceding statement leaves no branch point unfilled". It is necessary, not sufficient, and — tested — it does not catch a *missed* branch slot.
+- **No symbol in the source is used in two roles.** Over all 4,832 statements, 1,131 names each appear in exactly one of descriptor / specifier / branch point / constant / flag / syntax table / format. Misclassifying any slot in either direction puts a name in two roles: calling `AEQLC`'s `EQLOC` a constant produces 43 collisions, calling `GETDC`'s `DESCR2` a specifier produces 23. Four slots are excluded because their overlap is the documented meaning — `DESCR`'s `A` field, `EQU`'s operand, `SlotProc` (a procedure entry is also a branch target, by §6.15), and `SlotList`, which counts as its element kind.
+
+`MinArgs` is a method rather than a field: it is entirely implied by which operands are `Optional`, and a stored copy could only drift. `Cells` became `Size`, an eight-value enum, because four of the six data directives size in `DESCR`, `SPEC` or `CPA` and those are not known until `PARMS` is read; `layout` reads the enum and supplies the numbers.
 
 **M5 — First vertical slice runs.** See below.
 *Exit:* `go test ./pkg/sil` drives a hand-written SIL program from source through assembler and VM to byte-exact output on an in-process buffer, exercising an alternate return and a fall-through return.
@@ -249,7 +258,7 @@ Also carry over from maclo: `Assemble(nodes, Options) (*VM, error)` returning a 
 2. **Parser doesn't fit the source** — M0–M2. The 37-name gate is exact; 38 means a real discovery.
 3. **`DESCR`/`CPA` chosen wrong** — M3, by computing the four identities rather than asserting them, and by rerunning the assembly on a second set of parameters. Retired for `DESCR` and `CPA`; `SPEC` waits for M5.
 4. **Call model wrong** — M5. Hardest joint decision; a 30-line program falsifies it immediately. **Do not defer behind sixty easy instructions.**
-5. **Table drift** — M4, via the three cross-checks, especially the `*_` oracle.
+5. **Table drift** — M4, via the three cross-checks. Retired, but by the one-role oracle rather than by the `*_` markers; §6 being alphabetical makes `Doc` self-checking, since an operation's rank in the alphabet is its section number.
 6. **First-error bailout unusable at 6,580 lines** — M2. maclo's retrospective names this as its own mistake; accumulate per stage.
 7. **Syntax tables** — M7. Appendix A is the spec; budget for 25 tables where the source names only 13.
 8. **`PLUGTB`/`CLERTB`** — M7, and optional per §7.1 (cost: `ANY`/`BREAK`/`SPAN`/`NOTANY`).
