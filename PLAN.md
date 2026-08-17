@@ -56,8 +56,8 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M6  | Instruction batches by §7.5 classification | **done** — 116 of 119; the other three are M7 | `pkg/sil` |
 | M7  | Syntax tables and `STREAM`                 | **done** | `pkg/sil`, `pkg/sil/syntab` |
 | M8  | The historical source assembles clean      | **done** | `pkg/sil/asm` |
-| M9  | Execution to first trap, then to `ENDEX`   | TODO                               |                                     |
-| M10 | First SNOBOL4 program                      | TODO                               |                                     |
+| M9  | Execution to first trap, then to `ENDEX`   | **done** | `pkg/sil/asm` |
+| M10 | First SNOBOL4 program                      | **done** | `pkg/sil/asm` |
 
 The front end (M0–M3) is complete: the whole 6,580-line source scans, parses and resolves with no diagnostics, the 37 undefined names it derives are exactly the machine-dependent contract, and with the three COPY segments in it lays out into 17,216 address units with every symbol valued and every expression well formed.
 
@@ -225,7 +225,27 @@ It fell out of M6 and M7 rather than needing work of its own, which is what the 
 
 **M9 — Execution to first trap, then to `ENDEX`.** *Exit:* every halt is a documented `ENDEX` or a named unimplemented opcode. Track instructions-executed-before-first-trap as a monotone number in the changelog.
 
+Done. The number was tracked twice and then stopped being interesting:
+
+- **23,220 instructions**, and the trap was `BKSIZE` walking off the end of core in the garbage collector. `INIT` was a documented partial from M5 — no dynamic storage — so `FRSGPT` was zero and `GCLAD`'s block walk had no region to end at. The banner had already printed by then.
+- **Everything after that is `ENDEX`.** `INIT` now obtains dynamic storage the way §6.46 allows — "space for dynamic storage may be preallocated or obtained from the operating system by `INIT`" — growing core by `DefaultDynamic` descriptors, which §2.2 puts at "about 10,000", and setting the address fields of `HDSGPT`, `FRSGPT` and `TLSGP1`. It is all three or none: every test program here names none of them and does not use dynamic storage, and a program naming some but not all would run against a region half of it cannot see. There is still no timer, which §6.71 note 4 makes optional and `MSTIME` asks the host for.
+
 **M10 — First SNOBOL4 program.** `X = 'HELLO'; OUTPUT = X; END`, compared against a reference SNOBOL4.
+
+Done, in `pkg/sil/asm`'s corpus test. The historical Macro SNOBOL4 implementation compiles the program, executes it, prints `HELLO`, prints its statistics — two statements executed, none failed, one write — and terminates through `ENDEX` at status zero.
+
+The program's own output and the system's are kept apart because they take different paths: the source-language `OUTPUT` variable reaches the host through `STPRNT`, and everything the system says about itself goes through `OUTPUT` (§6.75) under FORTRAN IV formats that nothing here interprets. So the program's stream is asserted exactly and the system's is only searched for "NO ERRORS DETECTED IN SOURCE PROGRAM". Risk 9 is what is left: the banner and the statistics come out as their own format strings. The `-UNLIST` control card is in the test program so that the compilation listing, which shares the `STPRNT` path, does not mix into the program's output — and getting that far exercises `CARDTB`, the syntax table that tells a control card from a statement.
+
+Eight more programs run alongside it, each reaching a subsystem the first does not: integer arithmetic with precedence, concatenation, `SIZE`, real arithmetic through `SPREAL`/`ADREAL`/`REALST`, pattern matching, `SPAN` through `CLERTB`/`PLUGTB`/`STREAM` over `SNABTB`, `REPLACE` through `RPLACE`, a loop through the interpreter's goto field, and a defined function, which is the call model of M5 running under the SNOBOL4 compiler rather than under a test program. All nine give the right answer.
+
+## What is left
+
+The ten milestones are done. What the machine does not have:
+
+- **A FORTRAN IV format interpreter** (risk 9). `Host.Print` and `Host.Output` both take the format undigested, which is where §2.1 puts the boundary, and nothing on the far side reads one. The effect is that the system's banner, its error messages and its statistics come out as format strings with the values beside them. Nothing a SNOBOL4 program prints goes through a format, so the programs above are unaffected.
+- **A runner.** `cmd/sil` is still empty, and `engines/README.md` promises the SIL source is embedded, which needs a `//go:embed`.
+- **`ORDVST`**, which is §6.74 note 1's documented alternative rather than the operation; the post-run dump is unalphabetized. See the miscellaneous batch.
+- **`LOAD`, `LINK` and `UNLOAD`**, which are §7.1's alternatives for a machine with no external functions.
 
 ## The call model (verified against §6.87 / §6.95)
 

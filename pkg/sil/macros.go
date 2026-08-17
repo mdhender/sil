@@ -155,14 +155,69 @@ func (s *VM) ENDEX(descr int) {
 // Programming Notes:
 //  1. See also ENDEX.
 //
-// Incomplete, and deliberately so: this machine has no dynamic storage
-// yet, so FRSGPT, HDSGPT and TLSGP1 are not set, and there is no timer
-// because MSTIME is not implemented. A program that uses dynamic
-// storage will fault on the first operation that reads one of those
-// three rather than run against a region that was never allocated.
+// # Dynamic storage
+//
+// 6.46 allows the space to be "preallocated or obtained from the
+// operating system by INIT", and this machine obtains it: core grows
+// by VM.Dynamic descriptors here, so an assembled image stays exactly
+// what the assembler laid out and a listing is unaffected. See
+// VM.buffer, which takes the operation-local buffers the same way and
+// after this, since INIT is the first instruction executed.
+//
+// The three descriptors are the program's, and a program that names
+// none of them does not use dynamic storage -- every test program here
+// is one, and the vertical slice was written before there was any. So
+// all three or none; some but not all is a program that would run
+// against a region half of it cannot see.
+//
+// There is no timer to initialize. 6.71 note 4 makes a clock optional
+// and MSTIME asks the host for one, so the initialization 6.46
+// describes has nowhere to happen and nothing to do.
 //
 // S4D58.PDF: 6.46
-func (s *VM) INIT() {}
+func (s *VM) INIT() error {
+	const (
+		head     = "HDSGPT" // the head of the region
+		position = "FRSGPT" // where the next block goes
+		past     = "TLSGP1" // one descriptor past the end
+	)
+	names := []string{head, position, past}
+
+	defined := 0
+	for _, n := range names {
+		if _, ok := s.Symbols[n]; ok {
+			defined++
+		}
+	}
+	switch defined {
+	case 0:
+		return nil
+	case len(names):
+	default:
+		return s.fault("INIT: dynamic storage needs %v, and this program defines %d of them",
+			names, defined)
+	}
+
+	n := s.Dynamic
+	if n <= 0 {
+		n = DefaultDynamic
+	}
+	at := len(s.Core)
+	s.Core = append(s.Core, make([]Cell, n*s.Descr)...)
+
+	// 6.46 names only the address fields, and the source declares all
+	// three DESCR 0,PTR,0 (lines 5802 to 5804), so the flag stays.
+	s.Core[s.Symbols[head]].A = at
+	s.Core[s.Symbols[position]].A = at
+	s.Core[s.Symbols[past]].A = at + n*s.Descr
+	return nil
+}
+
+// DefaultDynamic is how many descriptors of dynamic storage INIT
+// allocates when VM.Dynamic says nothing. S4D58 2.2: "A production
+// system should be able to provide about 10,000 descriptors of
+// dynamically allocated storage."
+const DefaultDynamic = 10000
 
 // ISTACK (initialize stack) is used to initialize the system stack.
 //

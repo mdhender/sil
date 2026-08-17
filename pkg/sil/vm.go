@@ -75,6 +75,10 @@ type VM struct {
 	// Host is the outside world.
 	Host Host
 
+	// Dynamic is how many descriptors of dynamic storage INIT
+	// allocates (6.46). Zero takes DefaultDynamic.
+	Dynamic int
+
 	// Halted is set by ENDEX, and Status is the value it read (6.29).
 	Halted bool
 	Status int
@@ -423,7 +427,7 @@ func (s *VM) execute(c Cell) error {
 	case op.ENDEX:
 		s.ENDEX(c.Ops[0])
 	case op.INIT:
-		s.INIT()
+		return s.INIT()
 	case op.ISTACK:
 		return s.ISTACK()
 	case op.MOVD:
