@@ -471,12 +471,13 @@ func TestStep(t *testing.T) {
 
 	t.Run("names an unimplemented operation", func(t *testing.T) {
 		s := machine()
-		// ADREAL is unimplemented until the real-number batch. Any
-		// operation the dispatch does not yet name will do; change it
-		// when this one arrives.
-		s.instr(10, op.ADREAL, d1, d2, d3)
+		// LOAD is the last operation this machine will ever get:
+		// PLAN.md's risk register has it at 0.000% of execution time
+		// with one call site, and 7.1 makes it optional. Any operation
+		// the dispatch does not name will do here.
+		s.instr(10, op.LOAD, d1, spec1, spec2, gt, lt)
 		err := s.Step()
-		if err == nil || !strings.Contains(err.Error(), "ADREAL is not implemented") {
+		if err == nil || !strings.Contains(err.Error(), "LOAD is not implemented") {
 			t.Errorf("reported %v", err)
 		}
 	})

@@ -320,3 +320,11 @@ func TestSpecifierOperations(t *testing.T) { selfChecking(t, "testdata/specifier
 // This is also where FATHER, LSON, RSIB and CODE are supplied by the
 // program, which is where 6.4 note 2 says they come from.
 func TestNodeOperations(t *testing.T) { selfChecking(t, "testdata/nodes.sil") }
+
+// The real-number batch. A real can only get into a SIL program
+// through INTRL or SPREAL and can only be read back through REALST, so
+// every check is a round trip that ends in a LEXCMP against a STRING
+// of the answer. That makes it the test of the choice this machine
+// makes about where a real lives, which is the address field: nothing
+// here tells the assembler that any of these descriptors holds one.
+func TestRealNumberOperations(t *testing.T) { selfChecking(t, "testdata/reals.sil") }

@@ -53,7 +53,7 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
 | M4  | Instruction table and shape validation     | **done**             | `pkg/sil/op`      |
 | M5  | First vertical slice runs                  | **done**             | `pkg/sil`, `pkg/sil/asm` |
-| M6  | Instruction batches by §7.5 classification | in progress — 80 of 119 operations | `pkg/sil`        |
+| M6  | Instruction batches by §7.5 classification | in progress — 91 of 119 operations | `pkg/sil`        |
 | M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
 | M8  | The historical source assembles clean      | TODO                 |                   |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
@@ -156,7 +156,18 @@ The tree and pattern-node batch follows in `pkg/sil/nodes.go`: `ADDSIB` `ADDSON`
 - **§6.21's two figure headings contradict each other and the source says which is right.** The input of `R2+4D` is guarded by "if V7 = 3" and the output of `R1+4D` by "if V3 = 7". `V7` is the value field of what `MAKNOD` wrote from its `DESCR5`, and that value is the node's size: the three-descriptor nodes are built from `NMECL`, value 2 (line 5521), the four-descriptor ones from `ATOPCL` and `CHRCL`, value 3 (lines 5501, 5504) — and those are exactly the `MAKNOD` calls that pass a `DESCR6`. The section stride `(1+V7)*D` says the same thing again. `V3` is never read at all.
 - **`FATHER`, `LSON`, `RSIB` and `CODE` are the program's**, by §6.4 note 2, so the machine reads them out of the assembly. An assembly that leaves one undefined faults rather than guessing.
 
-**Remaining, by §7.5 group:** real numbers (11), miscellaneous (9), I/O (5), OS-dependent (5), the rest of the stack group (`PSTACK`, `SELBRA`, `BRANIC`, `SPOP`, `SPUSH`), and `STREAM`/`CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
+The real-number batch follows in `pkg/sil/reals.go`: `ADREAL` `SBREAL` `MPREAL` `DVREAL` `EXREAL` `MNREAL` `INTRL` `RLINT` `REALST` `SPREAL`, and `RCOMP`, the last of the comparisons. `pkg/sil/asm/testdata/reals.sil` checks all eleven with 19 checks. §7.1 marks the whole group optional, at the cost of real arithmetic; it is implemented rather than trapped.
+
+**A real number lives in the address field.** Every figure in §6 draws it there — §6.7 prints `DESCR2` as `R2 F2 V2` — and §3.1.1 says it in words: "the address field must also be large enough to contain any integer or real number (including sign)". §5.3 keeps the two `R`s apart: the `R` in an address field is a real number, the `R` in a value field is the data type code the source defines at line 298. The address field is a Go `int`, so a real is held there as its IEEE 754 bit pattern, and that is what makes it travel: `MOVD`, `GETD`, `PUSH` and the garbage collector move descriptors without knowing what is in them, exactly as on a machine where the address field is a word that sometimes holds an address, sometimes an integer and sometimes a float. The cost is that this machine needs a 64-bit `int`, which a constant in the file checks at compile time.
+
+Two smaller things:
+
+- **§6.88's second sentence sends `R1 = R2` to `GTLOC`.** `EQLOC` is in its own operand list and no other three-way comparison in §6 sends two arms to one place, so it is a slip, and `RCOMP` is implemented as §6.1 words the same case.
+- **`SPREAL` does not require the decimal point.** §6.112 note 2 says what the caller supplies rather than what the operation must reject, and note 3 — an empty string is 0.0 — shows it is not a strict literal parser. The source agrees from the other side: `CNVVI` (line 4716) and `CONVR` (line 4703) both try `SPCINT` first and only reach `SPREAL` when the string is not an integer, so a string of digits alone never arrives. What is rejected is everything outside a sign, digits and one point — the exponent, infinity and not-a-number forms Go's own parser would take.
+
+`REALST` gets its own scratch buffer rather than sharing `INTSPC`'s, because §6.49 note 2 and §6.89 note 3 each promise only that a buffer survives until the next use of *that* operation. Both come from past the end of the assembled image; `VM.buffer` is now the one place that does it.
+
+**Remaining, by §7.5 group:** miscellaneous (9), I/O (5), OS-dependent (5), the rest of the stack group (`PSTACK`, `SELBRA`, `BRANIC`, `SPOP`, `SPUSH`), and `STREAM`/`CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
 
 **M7 — Syntax tables and `STREAM`.** `STREAM` (35 sites), `PLUGTB`/`CLERTB` (4+4), MDATA generated from Appendix A. Lower risk than it looks: §4.2 states only `SNABTB` is ever mutated, so tables are immutable data with one exception.
 *Exit:* a SIL program that plugs `SNABTB`, runs `STREAM`, and reproduces `ANY`/`BREAK`/`NOTANY`/`SPAN`.

@@ -1,0 +1,151 @@
+       TITLE   'Real numbers'
+       COPY    PARMS
+*
+*      6.7, 6.27, 6.33, 6.48, 6.63, 6.70, 6.88, 6.89, 6.93, 6.97 and
+*      6.112.  A real number can only get into this program through
+*      INTRL or SPREAL and can only be read back through REALST, so
+*      every check is a round trip: build a number, do arithmetic on
+*      it, convert it back to a string, and compare that string with a
+*      STRING of the answer.  WHICH carries the number of the check.
+*
+*      5.3 says the data type codes I and R are defined in the SIL
+*      source program.  The SNOBOL4 source defines them at lines 293
+*      and 298; they are defined here at the same values.
+*
+I      EQU     6
+R      EQU     7
+STSIZE EQU     8
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+*      6.112: SPREAL converts a string, and stamps the value field
+*      with the real data type code.
+*
+       SPREAL  XPTR,R25SP,FAIL
+       SETAC   WHICH,1
+       VEQLC   XPTR,R,FAIL
+*
+*      6.89: and REALST converts it back.
+*
+       REALST  WSP,XPTR
+       SETAC   WHICH,2
+       LEXCMP  WSP,R25SP,FAIL,,FAIL
+*
+*      6.48: INTRL builds a real from an integer, and writes the same
+*      type code.  2 comes back as 2.0, with the decimal point 6.89
+*      note 1 requires.
+*
+       INTRL   YPTR,TWOCL
+       SETAC   WHICH,3
+       VEQLC   YPTR,R,FAIL
+       REALST  WSP,YPTR
+       SETAC   WHICH,4
+       LEXCMP  WSP,R20SP,FAIL,,FAIL
+*
+*      6.7, 6.97, 6.70, 6.27: the four arithmetic operations.
+*
+       ADREAL  ZPTR,XPTR,YPTR,FAIL
+       REALST  WSP,ZPTR
+       SETAC   WHICH,5
+       LEXCMP  WSP,R45SP,FAIL,,FAIL  2.5 + 2.0
+       SBREAL  ZPTR,XPTR,YPTR,FAIL
+       REALST  WSP,ZPTR
+       SETAC   WHICH,6
+       LEXCMP  WSP,R05SP,FAIL,,FAIL  2.5 - 2.0
+       MPREAL  ZPTR,XPTR,YPTR,FAIL
+       REALST  WSP,ZPTR
+       SETAC   WHICH,7
+       LEXCMP  WSP,R50SP,FAIL,,FAIL  2.5 * 2.0
+       DVREAL  ZPTR,XPTR,YPTR,FAIL
+       REALST  WSP,ZPTR
+       SETAC   WHICH,8
+       LEXCMP  WSP,R125SP,FAIL,,FAIL 2.5 / 2.0
+*
+*      6.33: 2.0 to the tenth.
+*
+       INTRL   WPTR,TENCL
+       EXREAL  ZPTR,YPTR,WPTR,FAIL
+       REALST  WSP,ZPTR
+       SETAC   WHICH,9
+       LEXCMP  WSP,R1024S,FAIL,,FAIL
+*
+*      6.63: MNREAL has no failing arm, and negating twice is the
+*      number again.
+*
+       MNREAL  ZPTR,XPTR
+       REALST  WSP,ZPTR
+       SETAC   WHICH,10
+       LEXCMP  WSP,RM25SP,FAIL,,FAIL
+       MNREAL  ZPTR,ZPTR
+       SETAC   WHICH,11
+       RCOMP   ZPTR,XPTR,FAIL,,FAIL
+*
+*      6.88: the three arms.  6.88's own sentence sends R1 = R2 to
+*      GTLOC, which cannot be right, since EQLOC is in its operand
+*      list.
+*
+       SETAC   WHICH,12
+       RCOMP   XPTR,YPTR,,FAIL,FAIL  2.5 > 2.0
+       SETAC   WHICH,13
+       RCOMP   YPTR,XPTR,FAIL,FAIL   2.0 < 2.5
+       SETAC   WHICH,14
+       RCOMP   XPTR,XPTR,FAIL,,FAIL  equal
+*
+*      6.93: RLINT discards the fractional part and writes the integer
+*      data type code.
+*
+       RLINT   WPTR,XPTR,FAIL
+       SETAC   WHICH,15
+       ACOMPC  WPTR,2,FAIL,,FAIL
+       SETAC   WHICH,16
+       VEQLC   WPTR,I,FAIL
+*
+*      6.27: dividing by zero takes FLOC.  Reaching DIVOK means it did
+*      not.
+*
+       INTRL   WPTR,ZEROCL
+       SETAC   WHICH,17
+       DVREAL  ZPTR,XPTR,WPTR,DIVOK,FAIL
+DIVOK  LHERE   ,
+*
+*      6.112: a string that is not a real takes FLOC.
+*
+       SETAC   WHICH,18
+       SPREAL  WPTR,ABCSP,SPROK,FAIL
+SPROK  LHERE   ,
+*
+*      An integer that goes out to a real and back is the integer.
+*
+       INTRL   WPTR,TENCL
+       RLINT   WPTR,WPTR,FAIL
+       SETAC   WHICH,19
+       ACOMPC  WPTR,10,FAIL,,FAIL
+*
+       SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+ZEROCL DESCR   0,0,0
+TWOCL  DESCR   2,0,0
+TENCL  DESCR   10,0,0
+WHICH  DESCR   0,0,0
+XPTR   DESCR   0,0,0
+YPTR   DESCR   0,0,0
+ZPTR   DESCR   0,0,0
+WPTR   DESCR   0,0,0
+WSP    SPEC    ,
+R25SP  STRING  '2.5'
+R20SP  STRING  '2.0'
+R45SP  STRING  '4.5'
+R05SP  STRING  '0.5'
+R50SP  STRING  '5.0'
+R125SP STRING  '1.25'
+R1024S STRING  '1024.0'
+RM25SP STRING  '-2.5'
+ABCSP  STRING  'ABC'
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR
+       ARRAY   STSIZE
+       END

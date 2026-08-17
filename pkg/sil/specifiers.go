@@ -277,30 +277,15 @@ func (s *VM) GETSPC(spec, descr, n int) error {
 //
 // Note 2 is why the buffer is the machine's rather than the program's:
 // nothing in the SNOBOL4 source names it, and its contents are
-// promised to nobody past the next INTSPC. It is taken from the end of
-// core the first time it is needed, so an assembled image is exactly
-// what the assembler laid out and a core listing is unaffected. The
-// offset is zero, which the figure leaves free.
+// promised to nobody past the next INTSPC. See VM.buffer. The offset
+// is zero, which the figure leaves free.
 //
 // S4D58.PDF: 6.49
 func (s *VM) INTSPC(spec, descr int) {
 	text := []byte(strconv.Itoa(s.Core[descr].A))
-	at := s.intBuffer(len(text))
+	at := s.buffer(&s.intBuf, len(text))
 	s.putChars(at, text)
 	s.putSpecifier(spec, at, 0, 0, 0, len(text))
-}
-
-// intBuffer returns the address of the buffer 6.49 note 2 calls local
-// to INTSPC, growing core to hold it the first time. Core is indexed
-// by address, never by pointer, so growing it is invisible to
-// everything already in it.
-func (s *VM) intBuffer(n int) int {
-	if s.intBuf == 0 || s.intBufLen < n {
-		s.intBuf = len(s.Core)
-		s.intBufLen = n
-		s.Core = append(s.Core, make([]Cell, n)...)
-	}
-	return s.intBuf
 }
 
 // LOCSP (locate specifier to string) is used to obtain a specifier to

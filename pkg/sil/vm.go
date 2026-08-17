@@ -90,12 +90,33 @@ type VM struct {
 	// separate stream from anything the program prints.
 	Trace io.Writer
 
-	// intBuf is the buffer 6.49 note 2 calls local to INTSPC, and
-	// intBufLen is how many characters of core it took. It is taken
-	// from past the end of the assembled image the first time INTSPC
-	// runs; see VM.intBuffer.
-	intBuf    int
-	intBufLen int
+	// The buffers S4D58 calls "local to" one operation: 6.49 note 2
+	// for INTSPC and 6.89 note 3 for REALST. Each is taken from past
+	// the end of the assembled image the first time its operation
+	// runs; see VM.buffer.
+	intBuf  scratch
+	realBuf scratch
+}
+
+// scratch is a buffer that belongs to the machine rather than to the
+// program: nothing in the SNOBOL4 source names one, and each entry
+// that uses one says its contents survive only until the next use of
+// that same operation.
+//
+// It is taken from past the end of the assembled image, so an image is
+// exactly what the assembler laid out and a core listing is
+// unaffected. Core is indexed by address and never by pointer, so
+// growing it is invisible to everything already in it.
+type scratch struct{ at, n int }
+
+// buffer returns the address of a scratch buffer wide enough for n
+// characters, taking or retaking it from the end of core.
+func (s *VM) buffer(b *scratch, n int) int {
+	if b.at == 0 || b.n < n {
+		b.at, b.n = len(s.Core), n
+		s.Core = append(s.Core, make([]Cell, n)...)
+	}
+	return b.at
 }
 
 // Fault is a failure of the machine rather than of the program it is
@@ -267,6 +288,29 @@ func (s *VM) execute(c Cell) error {
 		s.SETAV(c.Ops[0], c.Ops[1])
 	case op.ZERBLK:
 		return s.ZERBLK(c.Ops[0], c.Ops[1])
+
+	case op.ADREAL:
+		s.ADREAL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.SBREAL:
+		s.SBREAL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.MPREAL:
+		s.MPREAL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.DVREAL:
+		s.DVREAL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.EXREAL:
+		s.EXREAL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.MNREAL:
+		s.MNREAL(c.Ops[0], c.Ops[1])
+	case op.RCOMP:
+		s.RCOMP(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.INTRL:
+		return s.INTRL(c.Ops[0], c.Ops[1])
+	case op.RLINT:
+		return s.RLINT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.REALST:
+		s.REALST(c.Ops[0], c.Ops[1])
+	case op.SPREAL:
+		return s.SPREAL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
 
 	case op.ADDSIB:
 		return s.ADDSIB(c.Ops[0], c.Ops[1])
