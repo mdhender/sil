@@ -1,2 +1,9 @@
+# The SIL source of SNOBOL4 is not ours to redistribute; see
+# references/MANIFEST.md for where to obtain it. README.md is kept
+# because engines.go embeds this directory and go:embed refuses a
+# pattern that matches nothing, so a fresh checkout has to have at
+# least one file here for the tree to compile.
 *
 !.gitignore
+!README.md
+!engines.go
