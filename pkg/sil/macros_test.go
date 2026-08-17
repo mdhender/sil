@@ -469,14 +469,16 @@ func TestStep(t *testing.T) {
 		}
 	})
 
-	t.Run("names an unimplemented operation", func(t *testing.T) {
+	// Every one of S4D58 6's 119 operations is implemented, so the arm
+	// that names one that is not can only be reached now by a cell
+	// tagged with one of the twelve directives, which assemble rather
+	// than execute. That is what a branch into the middle of a data
+	// region looks like once it gets past the Kind check.
+	t.Run("names an operation the dispatch does not have", func(t *testing.T) {
 		s := machine()
-		// STREAM is M7's, since it needs the syntax tables. Any
-		// operation the dispatch does not name will do here; change it
-		// when this one arrives.
-		s.instr(10, op.STREAM, spec1, spec2, str1, gt, eq, lt)
+		s.instr(10, op.EQU, d1, d2)
 		err := s.Step()
-		if err == nil || !strings.Contains(err.Error(), "STREAM is not implemented") {
+		if err == nil || !strings.Contains(err.Error(), "EQU is not implemented") {
 			t.Errorf("reported %v", err)
 		}
 	})

@@ -54,7 +54,7 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M4  | Instruction table and shape validation     | **done**                           | `pkg/sil/op`                        |
 | M5  | First vertical slice runs                  | **done**                           | `pkg/sil`, `pkg/sil/asm`            |
 | M6  | Instruction batches by §7.5 classification | **done** — 116 of 119; the other three are M7 | `pkg/sil` |
-| M7  | Syntax tables and `STREAM`                 | TODO                               |                                     |
+| M7  | Syntax tables and `STREAM`                 | in progress — the three operations are done; Appendix A remains | `pkg/sil` |
 | M8  | The historical source assembles clean      | TODO                               |                                     |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                               |                                     |
 | M10 | First SNOBOL4 program                      | TODO                               |                                     |
@@ -200,6 +200,13 @@ Three decisions:
 
 **M7 — Syntax tables and `STREAM`.** `STREAM` (35 sites), `PLUGTB`/`CLERTB` (4+4), MDATA generated from Appendix A. Lower risk than it looks: §4.2 states only `SNABTB` is ever mutated, so tables are immutable data with one exception.
 *Exit:* a SIL program that plugs `SNABTB`, runs `STREAM`, and reproduces `ANY`/`BREAK`/`NOTANY`/`SPAN`.
+
+The three operations are done, in `pkg/sil/syntax.go`, and the exit criterion is met by `pkg/sil/asm/testdata/stream.sil` — the four combinations of `CLERTB` and `PLUGTB` the source uses at lines 2521 to 2581, with 23 checks. Nothing in it needs a table but `SNABTB`, which §4.2 says is the only one modified during execution and which `CLERTB` builds from nothing every time. That is 119 of 119 operations dispatched; the twelve directives assemble rather than execute.
+
+- **§4.2 lists six actions and only three need code.** `CONTIN`, `GOTO(TABLE)` and `PUT(ADDRESS)` are not indicators: `CONTIN` and `GOTO` both say which table reads the next character, which is the entry's address field either way — §6.19's figure for `CLERTB CONTIN` sets that field to the table itself, so "the current table" and "some other table" are one mechanism — and `PUT` is the value field, which `STREAM` carries along and drops into `STYPE`. Only `STOP`, `STOPSH` and `ERROR` stop the streaming.
+- **§6.116's transfer sentence drops a clause.** It reads "if TJ is ERROR, transfer is to ERRROR, while if if TJ is STOPSH, transfer is to SLOC. Otherwise transfer is to RUNOUT", which leaves `STOP` nowhere to go and makes `RUNOUT` mean two things. The sentence before it defines J over "ERROR, STOP, or STOPSH" and the figures give `STOP` its own arm, so it reads "STOP or STOPSH", and `RUNOUT` is the case where no such J exists. Note 2 confirms it from the edge: the null string is `RUNOUT`.
+
+Still to do: the twenty-five tables of Appendix A as MDATA content. The exit criterion does not need them — `SNABTB` is built at run time — but M8 and M9 do.
 
 **M8 — The historical source assembles clean.** *Exit:* zero diagnostics over 6,580 lines; entry point is the address of `BEGIN` (line 303, `BEGIN INIT ,` — §6.46 makes `INIT` the first instruction executed; `MLINK` supplies nothing the machine needs); a core listing is byte-stable across runs.
 

@@ -290,6 +290,13 @@ func (s *VM) execute(c Cell) error {
 	case op.ZERBLK:
 		return s.ZERBLK(c.Ops[0], c.Ops[1])
 
+	case op.CLERTB:
+		return s.CLERTB(c.Ops[0], c.Ops[1])
+	case op.PLUGTB:
+		return s.PLUGTB(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.STREAM:
+		return s.STREAM(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4], c.Ops[5])
+
 	case op.OUTPUT:
 		return s.OUTPUT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3:])
 	case op.STREAD:

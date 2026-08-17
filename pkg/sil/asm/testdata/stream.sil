@@ -1,0 +1,150 @@
+       TITLE   'Syntax tables and STREAM'
+       COPY    PARMS
+*
+*      6.19, 6.76 and 6.116, built the way the SNOBOL4 source builds
+*      them at lines 2521 to 2581: clear SNABTB to one indicator, plug
+*      the character set with another, and stream.  The four
+*      combinations are ANY, BREAK, NOTANY and SPAN.
+*
+*          ANY(S)     CLERTB ERROR   PLUGTB STOP
+*          BREAK(S)   CLERTB CONTIN  PLUGTB STOPSH
+*          NOTANY(S)  CLERTB STOP    PLUGTB ERROR
+*          SPAN(S)    CLERTB STOPSH  PLUGTB CONTIN
+*
+*      The character set is 'ABC' throughout.  WHICH carries the number
+*      of the check.
+*
+STSIZE EQU     8
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+*      ANY('ABC'): the first character, if it is in the set.
+*
+       CLERTB  SNABTB,ERROR
+       PLUGTB  SNABTB,STOP,CSSP
+       SETSP   YSP,BXYSP
+       SETAC   WHICH,1
+       STREAM  ZSP,YSP,SNABTB,FAIL,FAIL
+       SETAC   WHICH,2
+       LEXCMP  ZSP,BSP,FAIL,,FAIL   'B' accepted
+       SETAC   WHICH,3
+       LEXCMP  YSP,XYSP,FAIL,,FAIL  'XY' left
+*
+*      and nothing, if it is not.
+*
+       SETSP   YSP,XYZSP
+       SETAC   WHICH,4
+       STREAM  ZSP,YSP,SNABTB,ANYNO,FAIL,FAIL
+ANYNO  SETAC   WHICH,5
+       LEXCMP  ZSP,XYZSP,FAIL,,FAIL The whole string comes back
+*
+*      BREAK('ABC'): everything up to the first character in the set,
+*      which is not accepted.
+*
+       CLERTB  SNABTB,CONTIN
+       PLUGTB  SNABTB,STOPSH,CSSP
+       SETSP   YSP,XYABSP
+       SETAC   WHICH,6
+       STREAM  ZSP,YSP,SNABTB,FAIL,FAIL
+       SETAC   WHICH,7
+       LEXCMP  ZSP,XYSP,FAIL,,FAIL
+       SETAC   WHICH,8
+       LEXCMP  YSP,ABSP,FAIL,,FAIL
+*
+*      A string with no character of the set in it runs out.
+*
+       SETSP   YSP,XYZSP
+       SETAC   WHICH,9
+       STREAM  ZSP,YSP,SNABTB,FAIL,BRKRUN,FAIL
+BRKRUN SETAC   WHICH,10
+       LEXCMP  ZSP,XYZSP,FAIL,,FAIL
+       SETAC   WHICH,11
+       LEQLC   YSP,0,FAIL           Nothing is left
+*
+*      NOTANY('ABC'): the first character, if it is not in the set.
+*
+       CLERTB  SNABTB,STOP
+       PLUGTB  SNABTB,ERROR,CSSP
+       SETSP   YSP,XYZSP
+       SETAC   WHICH,12
+       STREAM  ZSP,YSP,SNABTB,FAIL,FAIL
+       SETAC   WHICH,13
+       LEXCMP  ZSP,XSP,FAIL,,FAIL
+       SETSP   YSP,ABSP
+       SETAC   WHICH,14
+       STREAM  ZSP,YSP,SNABTB,NNYNO,FAIL,FAIL
+NNYNO  LHERE   ,
+*
+*      SPAN('ABC'): the run of characters in the set.
+*
+       CLERTB  SNABTB,STOPSH
+       PLUGTB  SNABTB,CONTIN,CSSP
+       SETSP   YSP,ABXYSP
+       SETAC   WHICH,15
+       STREAM  ZSP,YSP,SNABTB,FAIL,FAIL
+       SETAC   WHICH,16
+       LEXCMP  ZSP,ABSP,FAIL,,FAIL
+       SETAC   WHICH,17
+       LEXCMP  YSP,XYSP,FAIL,,FAIL
+       SETSP   YSP,CSSP
+       SETAC   WHICH,18
+       STREAM  ZSP,YSP,SNABTB,FAIL,SPNRUN,FAIL
+SPNRUN SETAC   WHICH,19
+       LEXCMP  ZSP,CSSP,FAIL,,FAIL  All three accepted
+*
+*      6.116 note 2: the null string is RUNOUT, and STYPE is zero.
+*
+       SETSP   YSP,XYZSP
+       SETLC   YSP,0
+       SETAC   WHICH,20
+       STREAM  ZSP,YSP,SNABTB,FAIL,NULRUN,FAIL
+NULRUN SETAC   WHICH,21
+       ACOMPC  STYPE,0,FAIL,,FAIL
+*
+*      STREAM writes only the address field of STYPE, so the flag the
+*      source gives it survives.
+*
+       SETAC   WHICH,22
+       TESTF   STYPE,FNC,FAIL
+*
+*      PLUGTB plugs what it is given and nothing else, so a character
+*      outside the set still has the indicator CLERTB left.  SPAN's
+*      table stops short on it, which is check 17 read the other way.
+*
+       SETAC   WHICH,23
+       LEQLC   ZSP,0,FAIL           The null string accepted nothing
+*
+       SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+WHICH  DESCR   0,0,0
+*
+*      STYPE is the descriptor 4.2's PUT action names.  The SNOBOL4
+*      source declares it at line 5572; this is the same declaration.
+*
+STYPE  DESCR   0,FNC,0
+*
+*      SNABTB is the one table 4.2 says is modified during execution.
+*      Here it is the only one, since CLERTB and PLUGTB build it from
+*      nothing every time.
+*
+SNABTB ARRAY   ALPHSZ
+*
+YSP    SPEC    ,
+ZSP    SPEC    ,
+CSSP   STRING  'ABC'
+ABSP   STRING  'AB'
+BSP    STRING  'B'
+XSP    STRING  'X'
+XYSP   STRING  'XY'
+BXYSP  STRING  'BXY'
+XYZSP  STRING  'XYZ'
+XYABSP STRING  'XYAB'
+ABXYSP STRING  'ABXY'
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR
+       ARRAY   STSIZE
+       END

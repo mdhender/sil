@@ -344,6 +344,13 @@ func TestControlOperations(t *testing.T) { selfChecking(t, "testdata/control.sil
 // hand and makes LVALUE and LINKOR agree about where its end is.
 func TestMiscellaneousOperations(t *testing.T) { selfChecking(t, "testdata/misc.sil") }
 
+// M7's exit criterion: a SIL program that plugs SNABTB, runs STREAM,
+// and reproduces ANY, BREAK, NOTANY and SPAN. It is the same four
+// combinations of CLERTB and PLUGTB the SNOBOL4 source uses at lines
+// 2521 to 2581, and nothing in it depends on any table but SNABTB,
+// which 4.2 says is the only one modified during execution.
+func TestSyntaxTableOperations(t *testing.T) { selfChecking(t, "testdata/stream.sil") }
+
 // The input/output and system-dependent batches, which are the first
 // ones the machine cannot check by itself: what the host was asked for
 // is only visible from Go. The program checks what comes back --
