@@ -1,14 +1,10 @@
 # References
 
-# SIL File
-Copied from [here](https://raw.githubusercontent.com/atdt/snoflake/master/external/v311.sil)
+Most of these are available from the [Univerisy of Arizona memorial site](https://www.regressive.org/snobol4/doc/arizona/index.html).
 
-# University of Arizona
-* https://www.regressive.org/snobol4/doc/arizona/index.html
-
-# Phil Budne's Documentation Repository
-At https://www.snobol4.org/doc/arizona/
-
-The text of [Implementing SNOBOL4 in SIL; Version 3.11](https://www.snobol4.org/doc/arizona/s4d58.pdf).
-
-The text of [Transporting the SIL Version of SNOBOL4; An Overview](https://www.snobol4.org/doc/arizona/s4d54.pdf).
+* [Bibliography of Numbered SNOBOL4 Documents](s4d43-bibliography.pdf)
+* [Transporting the SIL Version of SNOBOL4](s4d54-transporting.pdf)
+* [Implementations of SNOBOL4](s4d57-implementation.pdf)
+* [Implementing SNOBOL4 in SIL; Version 3.11](s4d58-sil-v3.11.pdf)
+* [Comparison of Terminologies for the SIL Implementation of SNOBOL4](s4d59-terminology.pdf)
+* [Corrections to Versions 3.10 and 3.11 of the SIL Implementation of SNOBOL4](s4n24-errata.pdf)
