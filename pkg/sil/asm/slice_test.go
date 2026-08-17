@@ -304,3 +304,11 @@ func selfChecking(t *testing.T, path string) {
 // division by zero, zero to the zeroth power, and a sum outside
 // SIZLIM, which must also leave its result descriptor alone.
 func TestIntegerArithmeticOperations(t *testing.T) { selfChecking(t, "testdata/integers.sil") }
+
+// The specifier batch of S4D58 7.5, less STREAM. The checks are round
+// trips and identities compared with LEXCMP -- what SETSP copies is
+// lexically equal to what it copied from, what PUTSPC writes GETSPC
+// reads, ADDLG undoes SETLC -- and both arms of SUBSP and GETBAL are
+// taken, including the two the document gives as failures: a right
+// parenthesis and a window with no balanced string in it.
+func TestSpecifierOperations(t *testing.T) { selfChecking(t, "testdata/specifiers.sil") }

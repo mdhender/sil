@@ -1,0 +1,213 @@
+       TITLE   'Specifiers'
+       COPY    PARMS
+*
+*      The specifier group of S4D58 7.5, less STREAM.  Every check is
+*      an identity the document states, compared with LEXCMP, LEQLC or
+*      ACOMPC, and every branching operation is made to take both of
+*      its arms.  WHICH carries the number of the check, so the run
+*      ends with the one that failed or with zero.
+*
+STSIZE EQU     8
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+*      6.105: SETSP copies all five fields, so what it copies is
+*      lexically equal to what it copied from.
+*
+       SETSP   WSP,ABCSP
+       SETAC   WHICH,1
+       LEXCMP  WSP,ABCSP,FAIL,,FAIL
+*
+*      6.40, 6.84, 6.103, 6.3: the length field, four ways.
+*
+       GETLG   XCL,WSP
+       SETAC   WHICH,2
+       ACOMPC  XCL,3,FAIL,,FAIL     ABC is three characters
+       SETLC   WSP,0
+       SETAC   WHICH,3
+       LEQLC   WSP,0,FAIL
+       SETAC   XCL,3
+       ADDLG   WSP,XCL
+       SETAC   WHICH,4
+       LEXCMP  WSP,ABCSP,FAIL,,FAIL Back to ABC, so nothing else moved
+       SETAC   XCL,2
+       PUTLG   WSP,XCL
+       GETLG   YCL,WSP
+       SETAC   WHICH,5
+       ACOMP   XCL,YCL,FAIL,,FAIL
+*
+*      6.108: SHORTN drops characters from the end.
+*
+       SETSP   WSP,ABCSP
+       SHORTN  WSP,1
+       SETAC   WHICH,6
+       LEXCMP  WSP,ABSP,FAIL,,FAIL
+*
+*      6.35: FSHRTN drops them from the front.
+*
+       SETSP   WSP,ABCSP
+       FSHRTN  WSP,1
+       SETAC   WHICH,7
+       LEXCMP  WSP,BCSP,FAIL,,FAIL
+*
+*      6.90: REMSP is FSHRTN by the length of a third specifier, and
+*      the same specifier may be operand one and operand three.
+*
+       REMSP   WSP,ABCSP,ONESP
+       SETAC   WHICH,8
+       LEXCMP  WSP,BCSP,FAIL,,FAIL
+       SETSP   VSP,ABCSP
+       REMSP   VSP,ABCSP,VSP        VSP is three long, so nothing left
+       SETAC   WHICH,9
+       LEQLC   VSP,0,FAIL
+*
+*      6.118: SUBSP takes SLOC when L3 is at least L2, and leaves
+*      SPEC1 alone when it is not.
+*
+       SETSP   WSP,ABCSP
+       SUBSP   WSP,TWOSP,ABCSP,FAIL Two characters out of three
+       SETAC   WHICH,10
+       LEXCMP  WSP,ABSP,FAIL,,FAIL
+       SETSP   WSP,ABCSP
+       SETAC   WHICH,11
+       SUBSP   WSP,ABCSP,TWOSP,SUBOK,FAIL Three out of two fails
+SUBOK  SETAC   WHICH,12
+       LEXCMP  WSP,ABCSP,FAIL,,FAIL Not altered on the failing arm
+*
+*      6.11: APDSP appends, and 6.11 note 1 says an append onto a
+*      null specification puts the first character at A1+O1.
+*
+       SETSP   WSP,PADSP
+       SETLC   WSP,0
+       APDSP   WSP,ABSP
+       APDSP   WSP,CSP
+       SETAC   WHICH,13
+       LEXCMP  WSP,ABCSP,FAIL,,FAIL
+*
+*      6.125: TRIMSP stops at the trailing blanks, and note 1 leaves a
+*      string that does not end in one alone.
+*
+       TRIMSP  WSP,BLNKSP
+       SETAC   WHICH,14
+       LEXCMP  WSP,ABSP,FAIL,,FAIL
+       TRIMSP  WSP,ABCSP
+       SETAC   WHICH,15
+       LEXCMP  WSP,ABCSP,FAIL,,FAIL
+*
+*      6.43, 6.85: PUTSPC and GETSPC are inverses through an address
+*      field.
+*
+       PUTSPC  BLKPTR,DESCR,ABCSP
+       GETSPC  WSP,BLKPTR,DESCR
+       SETAC   WHICH,16
+       LEXCMP  WSP,ABCSP,FAIL,,FAIL
+*
+*      6.60: LOCSP specifies the string of a string structure, whose
+*      title holds the length and whose characters begin four
+*      descriptors in.  STRSTR below is one, built by hand.
+*
+       LOCSP   WSP,STRPTR
+       SETAC   WHICH,17
+       LEXCMP  WSP,ABCSP,FAIL,,FAIL
+       SETAC   WHICH,18
+       LOCSP   WSP,ZEROCL           A zero address is the null string
+       LEQLC   WSP,0,FAIL
+*
+*      6.49: INTSPC converts an integer to a normalized string, and
+*      6.49 note 1 puts a minus sign on a negative one.
+*
+       SETAC   XCL,123
+       INTSPC  WSP,XCL
+       SETAC   WHICH,19
+       LEXCMP  WSP,N123SP,FAIL,,FAIL
+       SETAC   XCL,0
+       INTSPC  WSP,XCL
+       SETAC   WHICH,20
+       LEXCMP  WSP,N0SP,FAIL,,FAIL
+       MNSINT  XCL,ONECL
+       INTSPC  WSP,XCL
+       SETAC   WHICH,21
+       LEXCMP  WSP,NM1SP,FAIL,,FAIL
+*
+*      6.37: GETBAL extends a specifier over the shortest balanced
+*      substring that follows it.  BALSP specifies nothing at the
+*      front of '(A)B)', so the first call must take one balanced
+*      group and the second must take the plain character after it.
+*
+       SETSP   WSP,BALSP
+       SETLC   WSP,0
+       SETAC   XCL,5
+       SETAC   WHICH,22
+       GETBAL  WSP,XCL,FAIL
+       SETAC   WHICH,23
+       LEXCMP  WSP,PARASP,FAIL,,FAIL  (A)
+       SETAC   XCL,2
+       SETAC   WHICH,24
+       GETBAL  WSP,XCL,FAIL
+       SETAC   WHICH,25
+       LEXCMP  WSP,PABSP,FAIL,,FAIL (A)B
+*
+*      A right parenthesis is 6.37's own failure case, and so is a
+*      window with no balanced string in it.
+*
+       SETAC   XCL,1
+       SETAC   WHICH,26
+       GETBAL  WSP,XCL,BALOK,FAIL   The ) at the end
+BALOK  SETSP   WSP,BALSP
+       SETLC   WSP,0
+       SETAC   XCL,2
+       SETAC   WHICH,27
+       GETBAL  WSP,XCL,BALOK2,FAIL  (A closes past the window
+BALOK2 SETAC   WHICH,28
+       LEQLC   WSP,0,FAIL           Not altered on the failing arm
+*
+       SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+ZEROCL DESCR   0,0,0
+ONECL  DESCR   1,0,0
+WHICH  DESCR   0,0,0
+XCL    DESCR   0,0,0
+YCL    DESCR   0,0,0
+BLKPTR DESCR   BLOCK,0,0
+BLOCK  DESCR   BLOCK,TTL+MARK,4*DESCR
+       ARRAY   4
+*
+*      A string structure (6.13): four descriptors including the
+*      title, whose value field is the length, then the characters.
+*      STRING assembles a specifier and then its characters (6.117
+*      note 1), and a specifier is 2*DESCR, so a title, one more
+*      descriptor and a STRING put the characters exactly 4*DESCR in,
+*      which is where 6.60 says to look for them.
+*
+STRPTR DESCR   STRSTR,0,0
+STRSTR DESCR   STRSTR,TTL+STTL,3
+       DESCR   0,0,0
+STRSP  STRING  'ABC'
+*
+*      The specifiers the checks read and the two they write.
+*
+WSP    SPEC    ,
+VSP    SPEC    ,
+ABSP   STRING  'AB'
+ABCSP  STRING  'ABC'
+BCSP   STRING  'BC'
+CSP    STRING  'C'
+ONESP  STRING  'X'
+TWOSP  STRING  'XY'
+BLNKSP STRING  'AB   '
+N0SP   STRING  '0'
+N123SP STRING  '123'
+NM1SP  STRING  '-1'
+BALSP  STRING  '(A)B)'
+PARASP STRING  '(A)'
+PABSP  STRING  '(A)B'
+PADSP  SPEC    PAD,0,0,0,0
+PAD    BUFFER  8
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR
+       ARRAY   STSIZE
+       END

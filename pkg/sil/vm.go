@@ -89,6 +89,13 @@ type VM struct {
 	// Trace, when set, receives one line per instruction. It is a
 	// separate stream from anything the program prints.
 	Trace io.Writer
+
+	// intBuf is the buffer 6.49 note 2 calls local to INTSPC, and
+	// intBufLen is how many characters of core it took. It is taken
+	// from past the end of the assembled image the first time INTSPC
+	// runs; see VM.intBuffer.
+	intBuf    int
+	intBufLen int
 }
 
 // Fault is a failure of the machine rather than of the program it is
@@ -260,6 +267,37 @@ func (s *VM) execute(c Cell) error {
 		s.SETAV(c.Ops[0], c.Ops[1])
 	case op.ZERBLK:
 		return s.ZERBLK(c.Ops[0], c.Ops[1])
+
+	case op.ADDLG:
+		s.ADDLG(c.Ops[0], c.Ops[1])
+	case op.APDSP:
+		return s.APDSP(c.Ops[0], c.Ops[1])
+	case op.FSHRTN:
+		s.FSHRTN(c.Ops[0], c.Ops[1])
+	case op.GETBAL:
+		return s.GETBAL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3])
+	case op.GETSPC:
+		return s.GETSPC(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.INTSPC:
+		s.INTSPC(c.Ops[0], c.Ops[1])
+	case op.LOCSP:
+		return s.LOCSP(c.Ops[0], c.Ops[1])
+	case op.PUTLG:
+		s.PUTLG(c.Ops[0], c.Ops[1])
+	case op.PUTSPC:
+		return s.PUTSPC(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.REMSP:
+		s.REMSP(c.Ops[0], c.Ops[1], c.Ops[2])
+	case op.SETLC:
+		s.SETLC(c.Ops[0], c.Ops[1])
+	case op.SETSP:
+		s.SETSP(c.Ops[0], c.Ops[1])
+	case op.SHORTN:
+		s.SHORTN(c.Ops[0], c.Ops[1])
+	case op.SUBSP:
+		s.SUBSP(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
+	case op.TRIMSP:
+		return s.TRIMSP(c.Ops[0], c.Ops[1])
 
 	case op.ACOMP:
 		s.ACOMP(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
