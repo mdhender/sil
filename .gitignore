@@ -5,6 +5,5 @@
 *.out
 *.so
 *.test
+.DS_Store
 .idea/
-s4d54.pdf
-s4d58.pdf

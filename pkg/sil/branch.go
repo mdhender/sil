@@ -25,34 +25,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package main
-
-func main() {
-
-}
-
-func (s *am) Add() {
-	// ADD    PROC    ,		   X + Y
-	//        SETAC   SCL,1
-	//        BRANCH  ARITH
-}
+package sil
 
 func (s *am) Branch() {
-
-}
-
-// SETAC (set address to constant) is used to set the address field
-// of a descriptor to a constant.
-//
-// Usage
-//   SETAC DESCR,N
-// Data Altered by
-//   DESCR N
-// Programming Notes:
-//  1. N may be a relocatable address.
-//  2. N is often 0, 1, or D.
-//  3. N is never negative.
-//  4. See also SETVC, SETLC, and SETAV
-func (s *am) SETAC() {
 
 }

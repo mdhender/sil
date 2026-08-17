@@ -25,7 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package main
+package sil
 
 // ACOMP (address comparison) is used to compare the address fields
 // of two descriptors. The comparison is arithmetic with A1 and A2
