@@ -43,9 +43,10 @@ const (
 	sc2 = 32
 	sc3 = 48
 
-	specCore = 96
-	specFail = 80 // FLOC and SLOC, outside anything else
-	specOK   = 81
+	specStack = 60 // a system stack, for SPUSH and SPOP
+	specCore  = 96
+	specFail  = 80 // FLOC and SLOC, outside anything else
+	specOK    = 81
 )
 
 func specMachine() *VM {

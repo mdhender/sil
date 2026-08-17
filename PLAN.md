@@ -53,7 +53,7 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
 | M4  | Instruction table and shape validation     | **done**             | `pkg/sil/op`      |
 | M5  | First vertical slice runs                  | **done**             | `pkg/sil`, `pkg/sil/asm` |
-| M6  | Instruction batches by §7.5 classification | in progress — 91 of 119 operations | `pkg/sil`        |
+| M6  | Instruction batches by §7.5 classification | in progress — 96 of 119 operations | `pkg/sil`        |
 | M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
 | M8  | The historical source assembles clean      | TODO                 |                   |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
@@ -167,7 +167,16 @@ Two smaller things:
 
 `REALST` gets its own scratch buffer rather than sharing `INTSPC`'s, because §6.49 note 2 and §6.89 note 3 each promise only that a buffer survives until the next use of *that* operation. Both come from past the end of the assembled image; `VM.buffer` is now the one place that does it.
 
-**Remaining, by §7.5 group:** miscellaneous (9), I/O (5), OS-dependent (5), the rest of the stack group (`PSTACK`, `SELBRA`, `BRANIC`, `SPOP`, `SPUSH`), and `STREAM`/`CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
+The rest of the stack group and the two remaining branch operations follow in `pkg/sil/control.go`: `PSTACK` `SPUSH` `SPOP` `BRANIC` `SELBRA`, checked from SIL by `pkg/sil/asm/testdata/control.sil`. A specifier is stacked exactly as a pair of descriptors would be — §3.2's "specifiers and descriptors may be stored in the same area indiscriminately" — so `SPUSH` and `SPOP` are `PUSH` and `POP` with `S` in place of `D`, with the same two destinations for overflow and underflow.
+
+`SELBRA` is the point of the batch, and it retires the second half of risk 4. `PC = addr(SELBRA)+I` is the whole of notes 1 and 2: the assembler emits the locations as `BRANCH` instructions and resolves an omitted one to the operation after the vector, so `I <= N` lands on a branch and `I = N+1` lands past them with no case written for either. `control.sil` takes all four arms.
+
+Two adjustments the batch forced:
+
+- **The assembler now writes `N` into the `SELBRA` cell.** §6.98 note 3 asks for a check that `I` is in `1..N+1`, and the machine cannot recover `N` from core — a `BRANCH` belonging to a `SELBRA` is indistinguishable from any other. This is the one place PLAN's "the VM never needs to know M" is not quite free; it costs one operand and buys note 3.
+- **`BRANIC` adds `N` rather than asserting it is zero**, which is a deviation from this plan. §6.16 note 1 is a statement about the SNOBOL4 source, not a restriction on the operation — `N` is in §6.16's box like any other operand — and the arithmetic is the same either way, so faulting on a nonzero one would be a restriction this machine invented. Nothing is lost: `N` is resolved by the assembler and cannot change at run time, so the assertion could only ever fire on a source the document permits.
+
+**Remaining, by §7.5 group:** miscellaneous (9), I/O (5), OS-dependent (5), and `STREAM`/`CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
 
 **M7 — Syntax tables and `STREAM`.** `STREAM` (35 sites), `PLUGTB`/`CLERTB` (4+4), MDATA generated from Appendix A. Lower risk than it looks: §4.2 states only `SNABTB` is ever mutated, so tables are immutable data with one exception.
 *Exit:* a SIL program that plugs `SNABTB`, runs `STREAM`, and reproduces `ANY`/`BREAK`/`NOTANY`/`SPAN`.

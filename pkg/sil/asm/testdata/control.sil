@@ -1,0 +1,105 @@
+       TITLE   'The stack and the branch vector'
+       COPY    PARMS
+*
+*      6.79, 6.113, 6.111, 6.16 and 6.98.  SELBRA is the point of the
+*      program: its locations are assembled as BRANCH instructions
+*      following it, so every arm, the omitted arm of note 1 and the
+*      I = N+1 arm of note 2 have to be taken to know the emitter and
+*      the arithmetic agree.  WHICH carries the number of the check.
+*
+STSIZE EQU     8
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+*      6.98: each of the three locations in turn.  Falling out of a
+*      SELBRA lands on the operation after the vector, which here is a
+*      branch to FAIL.
+*
+       SETAC   ICL,1
+       SETAC   WHICH,1
+       SELBRA  ICL,(SELA,FAIL,FAIL)
+       BRANCH  FAIL
+*_
+SELA   SETAC   ICL,2
+       SETAC   WHICH,2
+       SELBRA  ICL,(FAIL,SELB,FAIL)
+       BRANCH  FAIL
+*_
+SELB   SETAC   ICL,3
+       SETAC   WHICH,3
+       SELBRA  ICL,(FAIL,FAIL,SELC)
+       BRANCH  FAIL
+*_
+*      6.98 note 2: I = N+1 passes control to the operation following.
+*
+SELC   SETAC   ICL,4
+       SETAC   WHICH,4
+       SELBRA  ICL,(FAIL,FAIL,FAIL)
+*
+*      6.98 note 1: an omitted location does the same thing.
+*
+       SETAC   ICL,2
+       SETAC   WHICH,5
+       SELBRA  ICL,(FAIL,,FAIL)
+*
+*      6.16: BRANIC reads the location out of core.
+*
+       SETAC   WHICH,6
+       BRANIC  BRPTR,0
+       BRANCH  FAIL
+*_
+*      6.79: PSTACK posts the position the stack was in before the top
+*      descriptor was put there, so pushing one descriptor moves it by
+*      one descriptor.
+*
+BRTGT  PSTACK  XCL
+       PUSH    (ACL)
+       PSTACK  YCL
+       SUBTRT  ZCL,YCL,XCL,FAIL
+       SETAC   WHICH,7
+       ACOMPC  ZCL,DESCR,FAIL,,FAIL
+       SETAC   WHICH,8
+       VEQLC   XCL,0,FAIL           The other two fields are zero
+       POP     (ACL)
+*
+*      6.113, 6.111: a specifier occupies S address units on the stack
+*      and comes back the way it went on.  The two specifiers are
+*      overwritten between, so restoring them is what is checked.
+*
+       SETSP   VSP,ABCSP
+       SETSP   WSP,ABSP
+       SPUSH   (VSP,WSP)
+       SETSP   VSP,ZZZSP
+       SETSP   WSP,ZZZSP
+       SPOP    (WSP,VSP)
+       SETAC   WHICH,9
+       LEXCMP  VSP,ABCSP,FAIL,,FAIL
+       SETAC   WHICH,10
+       LEXCMP  WSP,ABSP,FAIL,,FAIL
+       PSTACK  ZCL
+       SETAC   WHICH,11
+       ACOMP   ZCL,XCL,FAIL,,FAIL   The stack is where it started
+*
+       SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+WHICH  DESCR   0,0,0
+ICL    DESCR   0,0,0
+XCL    DESCR   0,0,0
+YCL    DESCR   0,0,0
+ZCL    DESCR   0,0,0
+ACL    DESCR   1,0,10
+BRPTR  DESCR   BRCELL,0,0
+BRCELL DESCR   BRTGT,0,0
+VSP    SPEC    ,
+WSP    SPEC    ,
+ABSP   STRING  'AB'
+ABCSP  STRING  'ABC'
+ZZZSP  STRING  'ZZZ'
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR
+       ARRAY   STSIZE
+       END

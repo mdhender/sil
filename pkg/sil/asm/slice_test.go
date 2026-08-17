@@ -328,3 +328,10 @@ func TestNodeOperations(t *testing.T) { selfChecking(t, "testdata/nodes.sil") }
 // makes about where a real lives, which is the address field: nothing
 // here tells the assembler that any of these descriptors holds one.
 func TestRealNumberOperations(t *testing.T) { selfChecking(t, "testdata/reals.sil") }
+
+// The rest of the stack group and the two branch operations. SELBRA is
+// the point of it: its locations are assembled as BRANCH instructions
+// following it, so nothing short of taking every arm -- including the
+// omitted one of 6.98 note 1 and the I = N+1 one of note 2 -- shows
+// that the emitter and the arithmetic agree.
+func TestControlOperations(t *testing.T) { selfChecking(t, "testdata/control.sil") }

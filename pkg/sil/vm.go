@@ -289,6 +289,17 @@ func (s *VM) execute(c Cell) error {
 	case op.ZERBLK:
 		return s.ZERBLK(c.Ops[0], c.Ops[1])
 
+	case op.PSTACK:
+		s.PSTACK(c.Ops[0])
+	case op.SPUSH:
+		return s.SPUSH(c.Ops)
+	case op.SPOP:
+		return s.SPOP(c.Ops)
+	case op.BRANIC:
+		return s.BRANIC(c.Ops[0], c.Ops[1])
+	case op.SELBRA:
+		return s.SELBRA(c.Ops[0], c.Ops[1])
+
 	case op.ADREAL:
 		s.ADREAL(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4])
 	case op.SBREAL:

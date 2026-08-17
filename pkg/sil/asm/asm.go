@@ -237,7 +237,15 @@ func (e *emitter) statement(s parser.Statement, p layout.Placement) {
 		e.call(s, p, src)
 
 	case op.SizeVector:
-		e.put(p.Addr, sil.Cell{Kind: sil.Instr, Op: k, Src: src, Ops: []int{e.field(s, 0)}})
+		// The second operand is N, the number of locations in the
+		// vector, which the machine cannot recover from the cells: a
+		// BRANCH belonging to a SELBRA is indistinguishable from any
+		// other. 6.98 note 3 asks for a check that I is in 1..N+1, so
+		// N is assembled alongside DESCR.
+		e.put(p.Addr, sil.Cell{
+			Kind: sil.Instr, Op: k, Src: src,
+			Ops: []int{e.field(s, 0), next - p.Addr - 1},
+		})
 		e.vector(s, entry, p.Addr+1, next, src)
 
 	default:
