@@ -1,0 +1,58 @@
+*---------------------------------------------------------------------*
+*      PARMS -- machine-dependent constants for the Go SIL machine
+*
+*      S4D58 6.20 lists thirteen names that this segment must supply.
+*      They are all EQU, so PARMS is pure assembly-time text and needs
+*      nothing outside SIL to express.
+*
+*      The choices here follow PLAN.md's core model: Core is a slice of
+*      cells, one cell per address unit, and a cell carries a whole
+*      descriptor.  Every appearance of DESCR in the SNOBOL4 source is
+*      linear -- k*DESCR, label-label-DESCR, DESCR+SPEC, -2*DESCR,
+*      DESCR*OBOFF -- with no masking, division or alignment, so DESCR
+*      may be any positive integer.  One makes "cell" and "descriptor"
+*      the same thing, which S4D58 3.1.1 licenses: "Descriptors do not
+*      have to address individual characters of strings."
+*
+*      CSTACK and OSTACK are the other two names 6.20 mentions.  They
+*      are machine registers here rather than storage locations, which
+*      6.20 explicitly allows, so they are VM state and not symbols.
+*      The SNOBOL4 source never names either one.
+*---------------------------------------------------------------------*
+*
+*      Sizes
+*
+DESCR  EQU     1		   Address width of a descriptor
+SPEC   EQU     2		   Address width of a specifier
+CPA    EQU     1		   Characters per addressing unit
+ALPHSZ EQU     256		   Characters in the character set
+SIZLIM EQU     16777215 	   Largest integer in a value field
+*
+*      Descriptor flags (S4D58 3.1.2).  Five flags are used by SNOBOL4
+*      and they are combined by addition -- TTL+MARK, DESCR+SPEC -- so
+*      each has to be a distinct bit.
+*
+TTL    EQU     1		   Title of a block
+MARK   EQU     2		   Marked title
+PTR    EQU     4		   Points into dynamic storage
+FNC    EQU     8		   Function descriptor
+STTL   EQU     16		   Title of a string structure
+*
+*      FORTRAN unit reference numbers (S4D58 2.1).  Kept at the IBM
+*      System/360 values; the host interface maps them to streams.
+*
+UNITI  EQU     5		   Standard input
+UNITO  EQU     6		   Standard print output
+UNITP  EQU     7		   Standard punch output
+*
+*      Syntax table action codes (S4D58 4.2).  These are the values of
+*      the indicator field T of a syntax table entry, and they reach
+*      the machine as the KEY operand of CLERTB and PLUGTB.  CONTIN is
+*      zero because 6.19's figure for CLERTB CONTIN shows the indicator
+*      field cleared and the address field set to the table itself;
+*      the other three are distinct nonzero tags.
+*
+CONTIN EQU     0		   Continue with the current table
+STOP   EQU     1		   Stop, last character included
+STOPSH EQU     2		   Stop, last character not included
+ERROR  EQU     3		   Stop with an error indication

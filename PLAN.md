@@ -50,8 +50,8 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M0  | Scanner                                    | **done** — `86a6d81` | `pkg/sil/scanner` |
 | M1  | Operand parser                             | **done** — `adbbae0` | `pkg/sil/parser`  |
 | M2  | The symbol gate                            | **done** — `c1a4ccc` | `pkg/sil/symtab`  |
-| M3  | Externals chosen; layout closes            | next                 |                   |
-| M4  | Instruction table and shape validation     | TODO                 |                   |
+| M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
+| M4  | Instruction table and shape validation     | next                 |                   |
 | M5  | First vertical slice runs                  | TODO                 |                   |
 | M6  | Instruction batches by §7.5 classification | TODO                 |                   |
 | M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
@@ -59,7 +59,7 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
 | M10 | First SNOBOL4 program                      | TODO                 |                   |
 
-The front end (M0–M2) is complete: the whole 6,580-line source scans, parses and resolves with no diagnostics, and the 37 undefined names it derives are exactly the machine-dependent contract. M3 is where machine-dependent choices start being hard to reverse.
+The front end (M0–M3) is complete: the whole 6,580-line source scans, parses and resolves with no diagnostics, the 37 undefined names it derives are exactly the machine-dependent contract, and with the three COPY segments in it lays out into 16,506 address units with every symbol valued and every expression well formed.
 
 Two measurements in this plan were taken from an early census and turned out to be wrong once a real parse existed. The source contains **unary minus** (`GETAC TVAL,PDLPTR,-2*DESCR`, lines 2694 and 2706), and **536** statements carry null operands rather than 668 — the difference is 123 lone-comma statements, which S4D58 7.6 defines as *no operands* rather than empty ones, plus 9 whose only nulls sit inside parenthesised lists.
 
@@ -78,6 +78,15 @@ This gate proves every name is *defined*. It says nothing about symbol *values*,
 
 **M3 — Externals chosen; layout closes.** Supply `PARMS`/`MDATA` as SIL text (§6.20 note 1 permits `COPY` to expand into text), one address unit per instruction, run the location counter.
 *Exit:* zero undefined symbols, and these four identities **computed rather than asserted**: `PRMSIZ == PRMTRM-PRMTBL-DESCR`; `OBLIST == OBSTRT-LNKFLD` with `LNKFLD == 3*DESCR`; `BUFLEN == BUFEXT*CPA`; `OBEND == OBLIST+DESCR*OBOFF`. Plus a relocatable/absolute discipline check (`reloc-reloc`=abs, `reloc±abs`=reloc, `reloc*anything`=error).
+
+Done, in `pkg/sil/copyseg` (the three segments, and `COPY` expansion into the line stream between the scanner and the parser) and `pkg/sil/layout` (the location counter and the value discipline). Four things the milestone did not anticipate:
+
+- **`MLINK` is empty.** §6.20 wants entry points for machine-language subroutines and I/O packages; this machine has neither, so the segment is comment-only. It stays a segment because `COPY MLINK` is in the read-only source.
+- **Nothing else needed per-opcode knowledge.** The location counter knows the twelve directives of §7.5 and treats everything else as one address unit. `COPY` had to move ahead of the parser, since it is what supplies the symbols; it is the assembler's only per-operation knowledge until M4.
+- **`E`, the syntax table entry width (§5.3), is `DESCR`.** A table entry has three fields — next table address, indicator, put field (§5.1) — which is the shape of a descriptor, so a table is `ARRAY ALPHSZ`. All twenty-five of Appendix A's tables are declared, twelve of them reachable only through `GOTO(TABLE)`; contents are M7.
+- **The four identities do not constrain `SPEC`.** `SPEC` reaches the location counter only through `STRING`, and the only relation the source states across a run of strings is `BUFEXT`, which measures that run with the sizes being checked. Assembling `STRING` as a descriptor plus characters passes all four. M5 is the first thing that can catch it. Recorded in the corpus test.
+
+Risk 3 is retired further than planned: the whole assembly is rerun with `DESCR=2, SPEC=4, CPA=4` and every identity rechecked, which is where `ARRAY N` emitting `N` units instead of `N*DESCR` shows up — a fault `DESCR=1` cannot see.
 
 **M4 — Instruction table and shape validation.** Still no semantics.
 *Exit:* all 4,832 statements type-check against the table. Free oracle: for each of the 516 `*_` markers, the preceding statement's entry has `Terminates: true` (353 are `BRANCH`; the rest must be `BRANIC`, `RRTURN`, `SELBRA` with all slots filled, or `ENDEX`).
@@ -238,7 +247,7 @@ Also carry over from maclo: `Assemble(nodes, Options) (*VM, error)` returning a 
 
 1. **Expression precedence** (`:5475`) — M1. One line; no test program will ever find it.
 2. **Parser doesn't fit the source** — M0–M2. The 37-name gate is exact; 38 means a real discovery.
-3. **`DESCR`/`CPA` chosen wrong** — M3, by computing the four identities rather than asserting them.
+3. **`DESCR`/`CPA` chosen wrong** — M3, by computing the four identities rather than asserting them, and by rerunning the assembly on a second set of parameters. Retired for `DESCR` and `CPA`; `SPEC` waits for M5.
 4. **Call model wrong** — M5. Hardest joint decision; a 30-line program falsifies it immediately. **Do not defer behind sixty easy instructions.**
 5. **Table drift** — M4, via the three cross-checks, especially the `*_` oracle.
 6. **First-error bailout unusable at 6,580 lines** — M2. maclo's retrospective names this as its own mistake; accumulate per stage.
@@ -262,7 +271,7 @@ Struck from the risk register by the manual: `BRANCH LOC,PROC` (§6.15) and `PRO
 - `pkg/sil/types.go` — `am`, `descriptor`, `specifier` become `Cell`, `Core`, `CSTACK`/`OSTACK`, `Symbols`
 - `pkg/sil/macros.go` — the doc-comment-plus-method convention every instruction follows
 - new: scanner, operand parser, symbol table, instruction table, assembler, `Step`, `Host`
-- new: `PARMS`/`MLINK` SIL sources; Go generator for the Appendix A syntax tables
+- `pkg/sil/copyseg/{parms,mlink,mdata}.sil` — the machine-dependent segments; Go generator for the Appendix A syntax table contents still to come
 - `AGENTS.md` — update "Agent Role" to match the chosen mode (M0)
 - `engines/sil-v3.11.sil` — read-only input. Lines 303, 2694, 5475, 6336, 6343, 6352, 6580 are the ones this plan leans on
 - `references/s4d58-sil-v3.11.pdf` — §5.2 branch points, §6.15/6.78/6.87/6.95/6.98 call model, §7.1 optional macros, §7.4 frequencies, §7.5 classification, §7.6 source format, Appendix A syntax tables

@@ -25,11 +25,18 @@ Run fmt/vet/test before considering a change complete.
 
 ## State of the code
 
-Early skeleton, well before Milestone 1. There is no lexer, parser, assembler, image format, or fetch/execute loop yet — only a handful of instruction methods hung on a stub machine. Do not assume infrastructure described in `README.md` exists.
+`PLAN.md` holds the milestone table and is the authority on what is done. As of M3 the assembler front end is complete and there is still no instruction table, emitter, image, or fetch/execute loop.
 
-- `pkg/sil` — the abstract machine. `am` in `types.go` currently holds only `pc`. `descriptor`, `specifier`, `characterString`, and `syntaxTableEntry` are transcribed from S4D58 §3 and carry the documentation in their comments.
+- `pkg/sil/diag` — accumulated diagnostics with source locations. Every stage appends and keeps going.
+- `pkg/sil/scanner` — columns to fields (S4D58 §7.6). Knows no operations.
+- `pkg/sil/parser` — the operand field to items and expressions. Knows no operations.
+- `pkg/sil/copyseg` — the `PARMS`, `MLINK` and `MDATA` segments as embedded SIL text, and `COPY` expansion into the line stream. This is where every machine-dependent constant is chosen. The only per-operation knowledge in the front end.
+- `pkg/sil/symtab` — definitions and references; closes the reference graph without any operation knowledge.
+- `pkg/sil/layout` — the location counter and symbol values, with the relocatable/absolute discipline. Knows the twelve directives of §7.5 and sizes everything else at one address unit.
+- `pkg/sil` — the abstract machine. `am` in `types.go` currently holds only `pc`. `descriptor`, `specifier`, `characterString`, and `syntaxTableEntry` are transcribed from S4D58 §3 and carry the documentation in their comments. Not yet connected to the front end.
 - `cmd/sil` — the runner entry point; empty.
-- `README.md`'s "Proposed Repository Layout" (`asm/`, `sil/`, `image/`, `runtime/`) is an aspirational sketch and does **not** match the tree. The actual layout after the `refactor project layout` commit is `cmd/` + `pkg/`. Introduce packages when implementation pressure justifies them, per AGENTS.md.
+- `internal/corpus` — locates the historical source for tests and holds the counts they assert. Corpus tests skip when it is absent; **a skip is not a pass**.
+- `README.md`'s "Proposed Repository Layout" (`asm/`, `sil/`, `image/`, `runtime/`) is an aspirational sketch and does **not** match the tree. Introduce packages when implementation pressure justifies them, per AGENTS.md.
 
 ## Instruction conventions
 

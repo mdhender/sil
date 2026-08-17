@@ -1,0 +1,79 @@
+*---------------------------------------------------------------------*
+*      MDATA -- machine-dependent data for the Go SIL machine
+*
+*      S4D58 6.20 requires four character strings and 4.2 requires the
+*      syntax tables.  Neither can be written as SIL text: a character
+*      literal cannot contain a quotation mark (7.6: "Quotation marks
+*      do not occur within literals"), the collating sequence contains
+*      control characters, and a syntax table is 256 entries of data
+*      that Appendix A specifies in a different language altogether.
+*
+*      This segment therefore reserves the space and leaves the content
+*      to the loader.  That is a deviation from the letter of two
+*      programming notes -- 6.17 note 1 says every character a BUFFER
+*      assembles must be blank at the start of execution, and 6.12 note
+*      1 says every field an ARRAY assembles must be zero -- and it is
+*      deliberate: BUFFER and ARRAY are being used here as the only
+*      documented ways to reserve characters and descriptors, not for
+*      their initial values.  Nothing in the SNOBOL4 source reads any
+*      of these regions before the loader has filled them.
+*
+*      6.20 note 1 permits this: "COPY may be implemented in a variety
+*      of ways.  COPY may, for example, simply expand into the data
+*      required, depending on the value of its argument."
+*---------------------------------------------------------------------*
+*
+*      Character Strings (S4D58 6.20)
+*
+*      The SNOBOL4 source assembles the specifiers ALPHSP, AMPSP, COLSP
+*      and QTSP against these four addresses (lines 5612-5620), so what
+*      is needed here is the address of the characters, not a specifier
+*      in front of them.  Each region is exactly as long as the
+*      specifier that points at it says it is.
+*
+ALPHA  BUFFER  ALPHSZ		   Collating sequence, ALPHSP
+AMPST  BUFFER  1		   Ampersand, AMPSP
+COLSTR BUFFER  2		   Colon and a blank, COLSP
+QTSTR  BUFFER  1		   Quotation mark, QTSP
+*
+*      Syntax Tables (S4D58 4.2, Appendix A)
+*
+*      A syntax table has one entry per character of the character set,
+*      indexed by the character's internal code, and an entry has three
+*      fields: the next table address A, the indicator T, and the put
+*      field P (5.1).  That is the shape of a descriptor, so E -- the
+*      address width of a syntax table entry (5.3) -- is DESCR here,
+*      and a table is ALPHSZ descriptors.
+*
+*      Appendix A defines all twenty-five.  Thirteen are named by the
+*      SNOBOL4 source; the other twelve are reached only through a
+*      GOTO(TABLE) action inside another table, and are marked below.
+*
+*      4.2: only SNABTB is modified during execution, by CLERTB and
+*      PLUGTB.  The other twenty-four are constant.
+*
+BIOPTB ARRAY   ALPHSZ		   Binary operator
+CARDTB ARRAY   ALPHSZ		   Card image
+DQLITB ARRAY   ALPHSZ		   Double-quoted literal    (reached by GOTO)
+ELEMTB ARRAY   ALPHSZ		   Element
+EOSTB  ARRAY   ALPHSZ		   End of statement
+FLITB  ARRAY   ALPHSZ		   Real literal 	    (reached by GOTO)
+FRWDTB ARRAY   ALPHSZ		   Forward scan
+GOTFTB ARRAY   ALPHSZ		   Failure goto 	    (reached by GOTO)
+GOTOTB ARRAY   ALPHSZ		   Goto field
+GOTSTB ARRAY   ALPHSZ		   Success goto 	    (reached by GOTO)
+IBLKTB ARRAY   ALPHSZ		   Initial blanks
+INTGTB ARRAY   ALPHSZ		   Integer		    (reached by GOTO)
+LBLTB  ARRAY   ALPHSZ		   Label
+LBLXTB ARRAY   ALPHSZ		   Label, extended
+NBLKTB ARRAY   ALPHSZ		   Nonblank		    (reached by GOTO)
+NUMBTB ARRAY   ALPHSZ		   Number
+NUMCTB ARRAY   ALPHSZ		   Number continuation	    (reached by GOTO)
+SNABTB ARRAY   ALPHSZ		   SPAN, NOTANY, ANY, BREAK
+SQLITB ARRAY   ALPHSZ		   Single-quoted literal    (reached by GOTO)
+STARTB ARRAY   ALPHSZ		   Statement start	    (reached by GOTO)
+TBLKTB ARRAY   ALPHSZ		   Trailing blanks	    (reached by GOTO)
+UNOPTB ARRAY   ALPHSZ		   Unary operator
+VARATB ARRAY   ALPHSZ		   Variable, first character
+VARBTB ARRAY   ALPHSZ		   Variable, later characters (reached by GOTO)
+VARTB  ARRAY   ALPHSZ		   Variable		    (reached by GOTO)

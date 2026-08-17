@@ -1,0 +1,18 @@
+*---------------------------------------------------------------------*
+*      MLINK -- linkage segment for the Go SIL machine
+*
+*      S4D58 6.20: "MLINK is a file of entry points and external symbol
+*      names that describe linkages used to access machine-language
+*      subroutines and I/O packages."
+*
+*      This machine has no machine-language subroutines and no external
+*      I/O package.  The operations that would need them -- OUTPUT,
+*      STPRNT, STREAD, BKSPCE, ENFILE, REWIND, MSTIME, DATE, LOAD, LINK,
+*      UNLOAD -- are implemented by the VM against a host interface it
+*      owns, so nothing in this segment has to be declared to the
+*      assembler.
+*
+*      MLINK therefore assembles no data and defines no symbols.  It is
+*      kept as a segment rather than deleted because COPY MLINK is in
+*      the historical source (line 225) and that source is read-only.
+*---------------------------------------------------------------------*
