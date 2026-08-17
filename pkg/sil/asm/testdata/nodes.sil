@@ -1,0 +1,200 @@
+       TITLE   'Tree and pattern nodes'
+       COPY    PARMS
+*
+*      6.4, 6.5, 6.47, 6.62 and 6.21.  Every alteration the document
+*      draws is read back with GETDC and compared, and the fields it
+*      leaves blank are given a value beforehand so that leaving them
+*      alone is checked rather than assumed.  WHICH carries the number
+*      of the check.
+*
+*      6.4 note 2 says FATHER, RSIB and CODE are symbols defined in
+*      the source program, so they are defined here, at the values the
+*      SNOBOL4 source gives them at lines 233 to 236.
+*
+FATHER EQU     DESCR
+LSON   EQU     2*DESCR
+RSIB   EQU     3*DESCR
+CODE   EQU     4*DESCR
+STSIZE EQU     8
+*---------------------------------------------------------------------
+       TITLE   'Checks'
+BEGIN  INIT    ,
+       ISTACK  ,
+*
+*      6.5: ADDSON makes B the left son of A, and the old left son C
+*      becomes B's right sibling.
+*
+       PUTDC   PA,LSON,PC
+       PUTDC   PA,CODE,CODCL
+       ADDSON  PA,PB
+       GETDC   XCL,PB,FATHER
+       SETAC   WHICH,1
+       DEQL    XCL,PA,FAIL
+       GETDC   XCL,PB,RSIB
+       SETAC   WHICH,2
+       DEQL    XCL,PC,FAIL
+       GETDC   XCL,PA,LSON
+       SETAC   WHICH,3
+       DEQL    XCL,PB,FAIL
+*
+*      The figure names only the value field of the CODE descriptor,
+*      and 6.100 shows that this document writes a zero when it means
+*      one, so the other two fields must survive.
+*
+       GETDC   XCL,PA,CODE
+       SETAC   WHICH,4
+       VEQLC   XCL,1,FAIL
+       SETAC   WHICH,5
+       ACOMPC  XCL,77,FAIL,,FAIL
+       SETAC   WHICH,6
+       TESTF   XCL,MARK,FAIL
+*
+*      6.4: ADDSIB links B in after A, taking A's father C and A's old
+*      right sibling D.
+*
+       PUTDC   PA,FATHER,PC
+       PUTDC   PA,RSIB,PD
+       PUTDC   PC,CODE,ZEROCL
+       ADDSIB  PA,PB
+       GETDC   XCL,PB,RSIB
+       SETAC   WHICH,7
+       DEQL    XCL,PD,FAIL
+       GETDC   XCL,PB,FATHER
+       SETAC   WHICH,8
+       DEQL    XCL,PC,FAIL
+       GETDC   XCL,PA,RSIB
+       SETAC   WHICH,9
+       DEQL    XCL,PB,FAIL
+       GETDC   XCL,PC,CODE
+       SETAC   WHICH,10
+       VEQLC   XCL,1,FAIL
+*
+*      6.47: INSERT puts B above A.  A's father C becomes B's, A
+*      becomes B's left son, and C's left son D points back at B.
+*
+       PUTDC   PA,FATHER,PC
+       PUTDC   PC,LSON,PD
+       PUTDC   PB,CODE,ZEROCL
+       INSERT  PA,PB
+       GETDC   XCL,PA,FATHER
+       SETAC   WHICH,11
+       DEQL    XCL,PB,FAIL
+       GETDC   XCL,PD,RSIB
+       SETAC   WHICH,12
+       DEQL    XCL,PB,FAIL
+       GETDC   XCL,PB,FATHER
+       SETAC   WHICH,13
+       DEQL    XCL,PC,FAIL
+       GETDC   XCL,PB,LSON
+       SETAC   WHICH,14
+       DEQL    XCL,PA,FAIL
+       GETDC   XCL,PB,CODE
+       SETAC   WHICH,15
+       VEQLC   XCL,1,FAIL
+*
+*      6.62: MAKNOD fills a pattern node.  A2+2D and A2+3D take an
+*      address field and nothing else, so both are given a flag and a
+*      value first.
+*
+       PUTDC   PA,2*DESCR,MRKCL
+       MAKNOD  YCL,PA,M3CL,M4CL,M5CL,M6CL
+       SETAC   WHICH,16
+       DEQL    YCL,PA,FAIL
+       GETDC   XCL,PA,DESCR
+       SETAC   WHICH,17
+       DEQL    XCL,M5CL,FAIL
+       GETDC   XCL,PA,2*DESCR
+       SETAC   WHICH,18
+       ACOMP   XCL,M4CL,FAIL,,FAIL
+       SETAC   WHICH,19
+       VEQLC   XCL,9,FAIL
+       SETAC   WHICH,20
+       TESTF   XCL,MARK,FAIL
+       GETDC   XCL,PA,3*DESCR
+       SETAC   WHICH,21
+       ACOMP   XCL,M3CL,FAIL,,FAIL
+       GETDC   XCL,PA,4*DESCR
+       SETAC   WHICH,22
+       DEQL    XCL,M6CL,FAIL
+*
+*      6.62 note 1: with DESCR6 omitted, one less descriptor moves.
+*
+       PUTDC   PA,4*DESCR,MRKCL
+       MAKNOD  YCL,PA,M3CL,M4CL,M5CL
+       GETDC   XCL,PA,4*DESCR
+       SETAC   WHICH,23
+       DEQL    XCL,MRKCL,FAIL
+*
+*      6.21: CPYPAT copies one section, relocating the links.  A6 is
+*      three and the section is (1+V7)*DESCR = 3*DESCR, so the copy
+*      stops after one.
+*
+       MOVA    YCL,PDST
+       CPYPAT  YCL,PSRC,A3CL,ADDCL,NULCL,SIZCL
+       GETDC   XCL,PDST,DESCR
+       SETAC   WHICH,24
+       DEQL    XCL,PS1CL,FAIL
+       GETDC   XCL,PDST,2*DESCR
+       SETAC   WHICH,25
+       ACOMPC  XCL,13,FAIL,,FAIL    F1(3) is 3+A4
+       SETAC   WHICH,26
+       VEQLC   XCL,77,FAIL          F2(0) is A5
+       GETDC   XCL,PDST,3*DESCR
+       SETAC   WHICH,27
+       ACOMPC  XCL,104,FAIL,,FAIL   A9+A3
+       SETAC   WHICH,28
+       VEQLC   XCL,107,FAIL         V9+A3
+       SETAC   WHICH,29
+       ACOMP   YCL,PDEND,FAIL,,FAIL The final R1
+*
+       SETAC   WHICH,0              Every check passed
+FAIL   ENDEX   WHICH
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+ZEROCL DESCR   0,0,0
+WHICH  DESCR   0,0,0
+XCL    DESCR   0,0,0
+YCL    DESCR   0,0,0
+CODCL  DESCR   77,MARK,0
+MRKCL  DESCR   0,MARK,9
+M3CL   DESCR   111,0,0
+M4CL   DESCR   222,0,0
+M5CL   DESCR   333,TTL+MARK,6
+M6CL   DESCR   444,PTR,8
+*
+*      Four code nodes, five descriptors each.
+*
+PA     DESCR   NODEA,0,0
+PB     DESCR   NODEB,0,0
+PC     DESCR   NODEC,0,0
+PD     DESCR   NODED,0,0
+NODEA  DESCR   0,0,0
+       ARRAY   4
+NODEB  DESCR   0,0,0
+       ARRAY   4
+NODEC  DESCR   0,0,0
+       ARRAY   4
+NODED  DESCR   0,0,0
+       ARRAY   4
+*
+*      One section of a pattern and somewhere to copy it to.  The
+*      section starts one descriptor past R2, which is what 6.21's
+*      figures for R2+D, R2+2D and R2+3D say.
+*
+PSRC   DESCR   PATSRC,0,0
+PATSRC DESCR   0,0,0
+PS1CL  DESCR   5,0,2                R2+D:  A7,F7,V7
+       DESCR   3,0,0                R2+2D: A8,0,V8
+       DESCR   4,0,7                R2+3D: A9,0,V9
+PDST   DESCR   PATDST,0,0
+PATDST DESCR   0,0,0
+       ARRAY   3
+PDEND  DESCR   PATDST+3*DESCR,0,0
+A3CL   DESCR   100,0,0              DESCR3
+ADDCL  DESCR   10,0,0               DESCR4
+NULCL  DESCR   77,0,0               DESCR5
+SIZCL  DESCR   3,0,0                DESCR6
+STACK  DESCR   STACK,TTL+MARK,STSIZE*DESCR
+       ARRAY   STSIZE
+       END

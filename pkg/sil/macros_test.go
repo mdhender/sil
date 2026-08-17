@@ -471,9 +471,12 @@ func TestStep(t *testing.T) {
 
 	t.Run("names an unimplemented operation", func(t *testing.T) {
 		s := machine()
-		s.instr(10, op.INSERT, d1, d2)
+		// ADREAL is unimplemented until the real-number batch. Any
+		// operation the dispatch does not yet name will do; change it
+		// when this one arrives.
+		s.instr(10, op.ADREAL, d1, d2, d3)
 		err := s.Step()
-		if err == nil || !strings.Contains(err.Error(), "INSERT is not implemented") {
+		if err == nil || !strings.Contains(err.Error(), "ADREAL is not implemented") {
 			t.Errorf("reported %v", err)
 		}
 	})

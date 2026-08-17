@@ -312,3 +312,11 @@ func TestIntegerArithmeticOperations(t *testing.T) { selfChecking(t, "testdata/i
 // taken, including the two the document gives as failures: a right
 // parenthesis and a window with no balanced string in it.
 func TestSpecifierOperations(t *testing.T) { selfChecking(t, "testdata/specifiers.sil") }
+
+// The tree and pattern-node batches. Every alteration the sections
+// draw is read back with GETDC and compared, and the fields they leave
+// blank are given a value beforehand, so that a field the document
+// does not name is checked to be unchanged rather than assumed to be.
+// This is also where FATHER, LSON, RSIB and CODE are supplied by the
+// program, which is where 6.4 note 2 says they come from.
+func TestNodeOperations(t *testing.T) { selfChecking(t, "testdata/nodes.sil") }

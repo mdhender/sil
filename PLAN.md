@@ -53,7 +53,7 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
 | M4  | Instruction table and shape validation     | **done**             | `pkg/sil/op`      |
 | M5  | First vertical slice runs                  | **done**             | `pkg/sil`, `pkg/sil/asm` |
-| M6  | Instruction batches by §7.5 classification | in progress — 75 of 119 operations | `pkg/sil`        |
+| M6  | Instruction batches by §7.5 classification | in progress — 80 of 119 operations | `pkg/sil`        |
 | M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
 | M8  | The historical source assembles clean      | TODO                 |                   |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
@@ -150,7 +150,13 @@ Three things the sections did not say outright:
 - **`INTSPC`'s buffer is the machine's, not the program's.** §6.49 note 2 calls it "local to `INTSPC`", nothing in the source names it, and its contents are promised to nobody past the next `INTSPC`. It is taken from past the end of the assembled image the first time `INTSPC` runs, so the image is exactly what the assembler laid out and a core listing is unaffected. Putting it in `MDATA` was the alternative and was rejected: `copyseg`'s corpus test asserts that the segments define exactly the contract the source needs and nothing more.
 - **`LOCSP`'s offset `4*CPD` is where a string structure's characters begin.** §6.13 gives a structure four descriptors including the title, the source says the same thing as `BCDFLD EQU 4*DESCR`, and CPD is `DESCR*CPA`. §6.37's `GETBAL` needed one thing the figure does not draw: `N = 0` leaves no `CL+1` to examine, so no balanced string exists and transfer is to `FLOC`.
 
-**Remaining, by §7.5 group:** real numbers (11), miscellaneous (9), I/O (5), OS-dependent (5), tree and pattern nodes (5), the rest of the stack group (`PSTACK`, `SELBRA`, `BRANIC`, `SPOP`, `SPUSH`), and `STREAM`/`CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
+The tree and pattern-node batch follows in `pkg/sil/nodes.go`: `ADDSIB` `ADDSON` `INSERT` `MAKNOD` `CPYPAT`, checked from SIL by `pkg/sil/asm/testdata/nodes.sil`. One reading decision governs the whole file and turned out to be checkable:
+
+- **A blank field in a figure is not a zero.** These entries name some fields of an altered descriptor and leave others blank — `ADDSIB` alters only the value field at `A3+CODE`, `MAKNOD` only the address fields of two of the four descriptors it writes. §6.100 settles it: `SETAV`'s figure reads `V 0 0`, with the zeros written, so a field the document does not name is a field the operation does not touch. Both the unit tests and `nodes.sil` give those fields a value beforehand, so leaving them alone is checked rather than assumed.
+- **§6.21's two figure headings contradict each other and the source says which is right.** The input of `R2+4D` is guarded by "if V7 = 3" and the output of `R1+4D` by "if V3 = 7". `V7` is the value field of what `MAKNOD` wrote from its `DESCR5`, and that value is the node's size: the three-descriptor nodes are built from `NMECL`, value 2 (line 5521), the four-descriptor ones from `ATOPCL` and `CHRCL`, value 3 (lines 5501, 5504) — and those are exactly the `MAKNOD` calls that pass a `DESCR6`. The section stride `(1+V7)*D` says the same thing again. `V3` is never read at all.
+- **`FATHER`, `LSON`, `RSIB` and `CODE` are the program's**, by §6.4 note 2, so the machine reads them out of the assembly. An assembly that leaves one undefined faults rather than guessing.
+
+**Remaining, by §7.5 group:** real numbers (11), miscellaneous (9), I/O (5), OS-dependent (5), the rest of the stack group (`PSTACK`, `SELBRA`, `BRANIC`, `SPOP`, `SPUSH`), and `STREAM`/`CLERTB`/`PLUGTB`, which belong with M7. §7.1 marks about thirty of these optional, each with the language feature it disables.
 
 **M7 — Syntax tables and `STREAM`.** `STREAM` (35 sites), `PLUGTB`/`CLERTB` (4+4), MDATA generated from Appendix A. Lower risk than it looks: §4.2 states only `SNABTB` is ever mutated, so tables are immutable data with one exception.
 *Exit:* a SIL program that plugs `SNABTB`, runs `STREAM`, and reproduces `ANY`/`BREAK`/`NOTANY`/`SPAN`.

@@ -268,6 +268,17 @@ func (s *VM) execute(c Cell) error {
 	case op.ZERBLK:
 		return s.ZERBLK(c.Ops[0], c.Ops[1])
 
+	case op.ADDSIB:
+		return s.ADDSIB(c.Ops[0], c.Ops[1])
+	case op.ADDSON:
+		return s.ADDSON(c.Ops[0], c.Ops[1])
+	case op.INSERT:
+		return s.INSERT(c.Ops[0], c.Ops[1])
+	case op.CPYPAT:
+		return s.CPYPAT(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4], c.Ops[5])
+	case op.MAKNOD:
+		return s.MAKNOD(c.Ops[0], c.Ops[1], c.Ops[2], c.Ops[3], c.Ops[4], c.Ops[5])
+
 	case op.ADDLG:
 		s.ADDLG(c.Ops[0], c.Ops[1])
 	case op.APDSP:
