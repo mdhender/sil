@@ -121,9 +121,13 @@ type Operand struct {
 	Optional bool
 }
 
-// Size says how much room an operation assembles. Only the six
-// data-assembling directives of 7.5 assemble anything that is not one
-// address unit.
+// Size says how much room an operation assembles.
+//
+// Most operations are one address unit. The six data-assembling
+// directives of 7.5 are as big as their operands say. RCALL and SELBRA
+// are the two executable operations that are not one unit: both are
+// followed by a vector of branch points that 6.87 and 6.98 print as
+// part of the code the macro assembles.
 type Size uint8
 
 const (
@@ -135,7 +139,26 @@ const (
 	SizeBuffer             // N characters (6.17)
 	SizeString             // a specifier, then the characters of the literal (6.117)
 	SizeChars              // the characters of the literal (6.34)
+	SizeCall               // the operation, a return slot, and one cell per exit (6.87)
+	SizeVector             // the operation and one cell per location (6.98)
 )
+
+// Vector returns the index of the operand holding the branch vector,
+// for the two operations that assemble one, and reports whether the
+// operation has one at all.
+func (e Entry) Vector() (int, bool) {
+	switch e.Size {
+	case SizeCall, SizeVector:
+	default:
+		return 0, false
+	}
+	for i, o := range e.Operands {
+		if o.Slot == SlotList && o.Elem == SlotBranch {
+			return i, true
+		}
+	}
+	return 0, false
+}
 
 // Category is an operation's classification in S4D58 7.5.
 //

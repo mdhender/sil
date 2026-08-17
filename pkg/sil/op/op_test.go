@@ -111,8 +111,12 @@ func TestDirectives(t *testing.T) {
 		if e.Directive {
 			got = append(got, e.Mnemonic)
 		}
-		if (e.Size != op.SizeUnit) != e.Directive {
-			t.Errorf("%s: Directive is %v but Size is %v", e.Mnemonic, e.Directive, e.Size)
+		switch {
+		case e.Directive && e.Size == op.SizeUnit:
+			t.Errorf("%s is a directive but assembles one address unit", e.Mnemonic)
+		case !e.Directive && e.Size != op.SizeUnit &&
+			e.Mnemonic != "RCALL" && e.Mnemonic != "SELBRA":
+			t.Errorf("%s is not a directive but has size %v", e.Mnemonic, e.Size)
 		}
 	}
 	if !slices.Equal(got, want) {
@@ -134,6 +138,29 @@ func TestDirectives(t *testing.T) {
 			}
 		default:
 			t.Errorf("%s is a directive classified under %s", e.Mnemonic, e.Cat)
+		}
+	}
+}
+
+// Vector names the operand that becomes the branch vector, and only
+// for the two operations that have one.
+func TestVector(t *testing.T) {
+	for _, k := range op.Kinds() {
+		e := op.Get(k)
+		i, ok := e.Vector()
+		switch e.Mnemonic {
+		case "RCALL":
+			if !ok || e.Operands[i].Name != "LOCm" {
+				t.Errorf("RCALL: Vector is operand %d, %v", i, ok)
+			}
+		case "SELBRA":
+			if !ok || e.Operands[i].Name != "LOCn" {
+				t.Errorf("SELBRA: Vector is operand %d, %v", i, ok)
+			}
+		default:
+			if ok {
+				t.Errorf("%s has a branch vector at operand %d", e.Mnemonic, i)
+			}
 		}
 	}
 }
@@ -207,7 +234,8 @@ func TestEveryEntryIsWellFormed(t *testing.T) {
 }
 
 // Sizes other than one address unit belong to the six data-assembling
-// directives, and each takes the operand its size is computed from.
+// directives and to the two operations that assemble a branch vector,
+// and each takes the operand its size is computed from.
 func TestSizesMatchTheirOperands(t *testing.T) {
 	for _, tt := range []struct {
 		mnemonic string
@@ -220,6 +248,8 @@ func TestSizesMatchTheirOperands(t *testing.T) {
 		{"SPEC", op.SizeSpec, op.SlotNone},
 		{"STRING", op.SizeString, op.SlotLiteral},
 		{"FORMAT", op.SizeChars, op.SlotLiteral},
+		{"RCALL", op.SizeCall, op.SlotNone},
+		{"SELBRA", op.SizeVector, op.SlotNone},
 	} {
 		e := op.Get(op.Lookup(tt.mnemonic))
 		if e.Size != tt.size {

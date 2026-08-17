@@ -262,8 +262,7 @@ ERROR  EQU     3
 	if descr != 2 || spec != 4 || cpa != 4 {
 		t.Fatalf("DESCR=%d SPEC=%d CPA=%d, want 2, 4 and 4", descr, spec, cpa)
 	}
-	t.Logf("DESCR=%d SPEC=%d CPA=%d, %d address units (%d with the assembled parameters)",
-		descr, spec, cpa, l.End(), 16506)
+	t.Logf("DESCR=%d SPEC=%d CPA=%d, %d address units", descr, spec, cpa, l.End())
 
 	entries := countBetween(t, stmts, "PRMTBL", "PRMTRM", "DESCR")
 	if got, want := value(t, l, "PRMSIZ"), (entries-1)*descr; got != want {

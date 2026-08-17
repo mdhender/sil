@@ -1,0 +1,66 @@
+       TITLE   'Vertical slice'
+       COPY    PARMS                Machine-dependent parameters
+*
+*      Add two numbers in a procedure and print which side of a
+*      limit the sum falls on.  The procedure returns by exit 1
+*      when the sum is within the limit and by exit 2 when it is
+*      not; exit 1 is written as a null, so it resolves to the
+*      operation after the RCALL (S4D58 5.2, 6.87 note 5).
+*
+LIMIT  EQU     100                  Largest sum that is not large
+*---------------------------------------------------------------------
+       TITLE   'Program'
+BEGIN  INIT    ,                    Initialize the run
+       ISTACK  ,                    Initialize the stack
+       SETAC   LIMCL,LIMIT          Set the limit
+       RCALL   SUMCL,PLUS,(ACL,BCL),(,BIG) Add them
+       STPRNT  RETCL,PRBLK,SMLSP    Exit 1: within the limit
+       BRANCH  DONE                 Done
+*_
+BIG    STPRNT  RETCL,PRBLK,BIGSP    Exit 2: over the limit
+DONE   ENDEX   ZEROCL               End of the run
+*_
+*---------------------------------------------------------------------
+       TITLE   'Procedure'
+PLUS   PROC    ,                    PLUS(X,Y)
+       POP     XCL                  Restore the first argument
+       POP     YCL                  Restore the second
+       MOVD    ZCL,XCL              Copy the first
+       SUM     ZCL,ZCL,YCL          Add the second
+       ACOMP   ZCL,LIMCL,PLUSBG     Over the limit?
+       RRTURN  ZCL,1                No, return by exit 1
+*_
+PLUSBG RRTURN  ZCL,2                Yes, return by exit 2
+*_
+*---------------------------------------------------------------------
+       TITLE   'Data'
+ACL    DESCR   40,0,0               The first number
+BCL    DESCR   2,0,0                The second
+LIMCL  DESCR   0,0,0                The limit, set by SETAC
+ZEROCL DESCR   0,0,0                No post-mortem dump
+SUMCL  DESCR   0,0,0                The sum, returned by PLUS
+RETCL  DESCR   0,0,0                The condition STPRNT signals
+XCL    DESCR   0,0,0                Scratch
+YCL    DESCR   0,0,0                Scratch
+ZCL    DESCR   0,0,0                Scratch
+*
+SMLSP  STRING  'SUM IS WITHIN THE LIMIT'
+BIGSP  STRING  'SUM IS OVER THE LIMIT'
+*
+*      The print block STPRNT reads (S4D58 6.114): a descriptor
+*      addressing the block, the unit at A+D, and the format
+*      string structure at A+2D.  The structure's title carries the
+*      length and the characters begin at BCDFLD.
+*
+PRBLK  DESCR   PRUNIT-DESCR,0,0     Pointer to the print block
+PRUNIT DESCR   UNITO,0,0            Standard print output
+       DESCR   PRFMT,0,0            Format
+PRFMT  DESCR   PRFMT,TTL+STTL,10    Title: ten characters
+       DESCR   0,0,0
+       DESCR   0,0,0
+       DESCR   0,0,0
+       FORMAT  '(1X,132A1)'         The characters, at BCDFLD
+*
+STACK  DESCR   0,0,0                The system stack (6.50 note 1)
+       ARRAY   63
+       END

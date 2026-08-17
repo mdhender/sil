@@ -52,8 +52,8 @@ A milestone is **done** when its exit criterion is checked by a test that *ran* 
 | M2  | The symbol gate                            | **done** — `c1a4ccc` | `pkg/sil/symtab`  |
 | M3  | Externals chosen; layout closes            | **done**             | `pkg/sil/copyseg`, `pkg/sil/layout` |
 | M4  | Instruction table and shape validation     | **done**             | `pkg/sil/op`      |
-| M5  | First vertical slice runs                  | next                 |                   |
-| M6  | Instruction batches by §7.5 classification | TODO                 |                   |
+| M5  | First vertical slice runs                  | **done**             | `pkg/sil`, `pkg/sil/asm` |
+| M6  | Instruction batches by §7.5 classification | next                 |                   |
 | M7  | Syntax tables and `STREAM`                 | TODO                 |                   |
 | M8  | The historical source assembles clean      | TODO                 |                   |
 | M9  | Execution to first trap, then to `ENDEX`   | TODO                 |                   |
@@ -102,6 +102,17 @@ The `*_` oracle turned out weaker than the plan assumed and a second, much stron
 
 **M5 — First vertical slice runs.** See below.
 *Exit:* `go test ./pkg/sil` drives a hand-written SIL program from source through assembler and VM to byte-exact output on an in-process buffer, exercising an alternate return and a fall-through return.
+
+Done, in `pkg/sil` (the machine) and `pkg/sil/asm` (the front end plus emission). `pkg/sil/asm/testdata/slice.sil` is the program; one operand differs between the two runs and the two goldens follow. Risk 4 is retired: the call model is right as written.
+
+Four corrections to the model this plan sketched:
+
+- **The branch vector is BRANCH instructions, not inert cells.** §6.87 prints the return code at `LOC` as `OP DESCR1 / BRANCH LOC1 / ... / BRANCH LOCM`, so `PC = LOC+N` lands on a real branch and executes it. Emitting them as data traps at the first return.
+- **`STPRNT`'s format is a string structure, not a specifier.** §6.114's figure puts the length in the title's value field and the characters at `A2+4D`; the source's `BCDFLD EQU 4*DESCR` and §6.13's "4 descriptors (including the title) in a string structure in addition to the string itself" agree. The statically assembled `STRING` formats reach that shape through initialization — line 322 runs `GENVAR` over each one and stores the structure — which is also how a format built at run time arrives (§2.1).
+- **The return slot is assembly-time data.** The descriptor the value comes back in is known when the `RCALL` is assembled, so the assembler writes it and `RCALL` only checks it. `RRTURN` asserts the cell is a return point, which is where a corrupted stack traps.
+- **`Cells` on the table entry became `Size`**, and `MinArgs` a method — see M4.
+
+The `Host` interface has one operation, `Print`, because `STPRNT` is the only thing that needs one yet. `INIT` is a documented partial: no dynamic storage and no timer, so `FRSGPT`, `HDSGPT` and `TLSGP1` are not set.
 
 **M6 — Instruction batches by §7.5 classification**, cheapest-first, prioritised within batch by §7.4 frequency: descriptor move/set → address-field arithmetic → comparisons → flags → value/size → specifiers → tree/pattern nodes → real numbers → I/O → OS-dependent.
 *Exit per batch:* every instruction has a test covering operand validity, state change, PC behaviour, branch behaviour, and error behaviour (`AGENTS.md`'s Definition of Done).
@@ -257,7 +268,7 @@ Also carry over from maclo: `Assemble(nodes, Options) (*VM, error)` returning a 
 1. **Expression precedence** (`:5475`) — M1. One line; no test program will ever find it.
 2. **Parser doesn't fit the source** — M0–M2. The 37-name gate is exact; 38 means a real discovery.
 3. **`DESCR`/`CPA` chosen wrong** — M3, by computing the four identities rather than asserting them, and by rerunning the assembly on a second set of parameters. Retired for `DESCR` and `CPA`; `SPEC` waits for M5.
-4. **Call model wrong** — M5. Hardest joint decision; a 30-line program falsifies it immediately. **Do not defer behind sixty easy instructions.**
+4. **Call model wrong** — M5. Retired. A 44-line program takes both returns, and `PC = LOC+N` is the whole dispatch, as long as the vector is assembled as BRANCH instructions.
 5. **Table drift** — M4, via the three cross-checks. Retired, but by the one-role oracle rather than by the `*_` markers; §6 being alphabetical makes `Doc` self-checking, since an operation's rank in the alphabet is its section number.
 6. **First-error bailout unusable at 6,580 lines** — M2. maclo's retrospective names this as its own mistake; accumulate per stage.
 7. **Syntax tables** — M7. Appendix A is the spec; budget for 25 tables where the source names only 13.

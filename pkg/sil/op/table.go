@@ -668,7 +668,7 @@ var table = [...]Entry{
 		{Slot: SlotDescr, Name: "DESCR2"},
 	}},
 	// RCALL -- recursive call
-	RCALL: {Mnemonic: "RCALL", Cat: CatStack, Doc: "S4D58 6.87", Operands: []Operand{
+	RCALL: {Mnemonic: "RCALL", Cat: CatStack, Doc: "S4D58 6.87", Size: SizeCall, Operands: []Operand{
 		{Slot: SlotDescr, Name: "DESCR", Optional: true},
 		{Slot: SlotProc, Name: "PROC"},
 		{Slot: SlotList, Elem: SlotDescr, Name: "DESCRn", Optional: true},
@@ -736,7 +736,7 @@ var table = [...]Entry{
 		{Slot: SlotBranch, Name: "SLOC", Optional: true},
 	}},
 	// SELBRA -- select branch point
-	SELBRA: {Mnemonic: "SELBRA", Cat: CatBranch, Doc: "S4D58 6.98", Operands: []Operand{
+	SELBRA: {Mnemonic: "SELBRA", Cat: CatBranch, Doc: "S4D58 6.98", Size: SizeVector, Operands: []Operand{
 		{Slot: SlotDescr, Name: "DESCR"},
 		{Slot: SlotList, Elem: SlotBranch, Name: "LOCn", Optional: true},
 	}},

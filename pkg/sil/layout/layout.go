@@ -37,14 +37,11 @@
 // machine itself -- inherits those choices, so they are checked here
 // against relationships the SNOBOL4 source states about its own data.
 //
-// Which of the eight shapes a statement has comes from the instruction
-// table; turning a shape into a number needs DESCR, SPEC and CPA, and
-// that is this package. Every operation is one address unit. RCALL and
-// SELBRA will not stay that way -- both assemble a branch vector after
-// the operation (S4D58 6.87 note 5, 6.98) -- so every address in the
-// code region is provisional until the emitter exists. No relationship
-// this stage checks spans the code region, so none of them move when
-// it does.
+// Which shape a statement has comes from the instruction table;
+// turning a shape into a number needs DESCR, SPEC and CPA, and that is
+// this package. Every operation is one address unit except RCALL and
+// SELBRA, each of which is followed by the vector of branch points
+// that S4D58 6.87 and 6.98 print as part of what the macro assembles.
 //
 // Nothing is emitted. A Layout says where each statement goes and what
 // each symbol is worth; it holds no cells.
@@ -316,6 +313,33 @@ func (l *Layout) sizeOf(s parser.Statement, ds *diag.List) int {
 	case op.SizeChars:
 		return l.chars(l.literal(s, ds))
 
+	case op.SizeCall:
+		// 6.87: the RCALL, then the return slot at LOC that holds the
+		// operation returning the value, then one BRANCH per exit.
+		return 2 + vectorLen(s, op.Get(k))
+
+	case op.SizeVector:
+		// 6.98: the SELBRA, then one branch point per location.
+		return 1 + vectorLen(s, op.Get(k))
+
+	default:
+		return 1
+	}
+}
+
+// vectorLen is how many branch points the statement's vector holds. A
+// vector of one is written without its parentheses, and an omitted
+// vector is a vector of none (6.87 note 4).
+func vectorLen(s parser.Statement, e op.Entry) int {
+	i, ok := e.Vector()
+	if !ok || i >= len(s.Operands) {
+		return 0
+	}
+	switch it := s.Operands[i]; it.Kind {
+	case parser.ItemList:
+		return len(it.List)
+	case parser.ItemNull:
+		return 0
 	default:
 		return 1
 	}
