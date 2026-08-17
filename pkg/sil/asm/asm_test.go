@@ -148,3 +148,72 @@ func TestEntryPoint(t *testing.T) {
 		t.Errorf("PC is %d, want START at %d", vm.PC, want)
 	}
 }
+
+// Options.Equates changes the value of a named EQU, which is how a
+// program that needs more room than the historical source allowed for
+// gets it without editing a file that is meant to be read-only input.
+func TestEquatesOverrideAnEQU(t *testing.T) {
+	const src = "" +
+		"       COPY    PARMS\n" +
+		"ROOM   EQU     1000\n" +
+		"BIG    EQU     ROOM*2\n" +
+		"BEGIN  ENDEX   ZERO\n" +
+		"ZERO   DESCR   0,0,0\n" +
+		"       END\n"
+
+	t.Run("the source's own value", func(t *testing.T) {
+		vm, ds := asm.Assemble("t.sil", []byte(src), asm.Options{})
+		if err := ds.Err(); err != nil {
+			t.Fatal(err)
+		}
+		if got := vm.Symbols["ROOM"]; got != 1000 {
+			t.Errorf("ROOM is %d, want 1000", got)
+		}
+		if got := vm.Symbols["BIG"]; got != 2000 {
+			t.Errorf("BIG is %d, want 2000", got)
+		}
+	})
+
+	t.Run("overridden", func(t *testing.T) {
+		vm, ds := asm.Assemble("t.sil", []byte(src), asm.Options{
+			Equates: map[string]int{"ROOM": 35000},
+		})
+		if err := ds.Err(); err != nil {
+			t.Fatal(err)
+		}
+		if got := vm.Symbols["ROOM"]; got != 35000 {
+			t.Errorf("ROOM is %d, want 35000", got)
+		}
+		// Everything computed from it moves with it, because the
+		// override happens before layout resolves anything.
+		if got := vm.Symbols["BIG"]; got != 70000 {
+			t.Errorf("BIG is %d, want 70000", got)
+		}
+	})
+
+	// A caller that misspells the name should be told. Silently doing
+	// nothing is the one behaviour that would leave somebody
+	// wondering why a bigger stack did not help.
+	t.Run("a name that is not an EQU", func(t *testing.T) {
+		_, ds := asm.Assemble("t.sil", []byte(src), asm.Options{
+			Equates: map[string]int{"STSIZE": 35000},
+		})
+		if ds.Err() == nil {
+			t.Fatal("no diagnostic for a name that is not in the source")
+		}
+		if !strings.Contains(ds.Err().Error(), "STSIZE is not an EQU") {
+			t.Errorf("reported %v", ds.Err())
+		}
+	})
+
+	// A label that is not an EQU is not an equate either, however
+	// much it looks like a name.
+	t.Run("a label that is not an EQU", func(t *testing.T) {
+		_, ds := asm.Assemble("t.sil", []byte(src), asm.Options{
+			Equates: map[string]int{"BEGIN": 1},
+		})
+		if ds.Err() == nil || !strings.Contains(ds.Err().Error(), "BEGIN is not an EQU") {
+			t.Fatalf("reported %v", ds.Err())
+		}
+	})
+}

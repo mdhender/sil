@@ -79,7 +79,7 @@ func Load() (name string, src []byte, err error) { return read(Engine) }
 func LoadManual() (name string, src []byte, err error) { return read(Manual) }
 
 func read(rel string) (name string, src []byte, err error) {
-	root, err := moduleRoot()
+	root, err := Root()
 	if err != nil {
 		return "", nil, err
 	}
@@ -94,9 +94,11 @@ func read(rel string) (name string, src []byte, err error) {
 	return name, src, nil
 }
 
-// moduleRoot walks up from the working directory to the directory
-// holding go.mod, because tests run in their own package directory.
-func moduleRoot() (string, error) {
+// Root walks up from the working directory to the directory holding
+// go.mod, because tests run in their own package directory. Every
+// path a test reaches for is module-relative, so this is where they
+// all start; internal/rosetta locates its own corpus the same way.
+func Root() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err

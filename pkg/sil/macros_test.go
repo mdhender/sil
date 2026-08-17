@@ -483,16 +483,33 @@ func TestStep(t *testing.T) {
 		}
 	})
 
+	// The bound is not a fault. A program that will not stop is a
+	// fact about the program, and a caller that cannot tell it from a
+	// branch into data has to guess -- so the two are separate types
+	// and this is what says so.
 	t.Run("stops a runaway program", func(t *testing.T) {
 		s := machine()
 		s.MaxCycles = 3
 		s.instr(10, op.BRANCH, 10)
 		err := s.Run()
-		if err == nil || !strings.Contains(err.Error(), "without halting") {
-			t.Errorf("reported %v", err)
+		if err == nil {
+			t.Fatal("no error from a program that never halted")
 		}
-		if s.Cycles != 3 {
-			t.Errorf("ran %d instructions, want 3", s.Cycles)
+		var bound *Bound
+		if !errors.As(err, &bound) {
+			t.Fatalf("reported %T: %v, want a *Bound", err, err)
+		}
+		var fault *Fault
+		if errors.As(err, &fault) {
+			t.Errorf("the instruction bound reported a fault of the machine: %v", err)
+		}
+		if bound.Cycles != 3 || s.Cycles != 3 {
+			t.Errorf("ran %d instructions and reported %d, want 3", s.Cycles, bound.Cycles)
+		}
+		// It cites where the program was sitting, which is the whole
+		// of what makes the message worth reading.
+		if bound.PC != 10 || bound.Op != op.BRANCH {
+			t.Errorf("reported %s at %d, want BRANCH at 10", bound.Op, bound.PC)
 		}
 	})
 

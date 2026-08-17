@@ -36,6 +36,7 @@ import (
 	"testing"
 
 	"github.com/mdhender/sil/engines"
+	"github.com/mdhender/sil/pkg/sil"
 )
 
 // The program used throughout. -UNLIST turns the compilation listing
@@ -266,8 +267,14 @@ func TestMaxStopsARunawayProgram(t *testing.T) {
 	if err == nil {
 		t.Fatal("no error from a run cut short")
 	}
-	if !strings.Contains(err.Error(), "without halting") {
-		t.Errorf("reported %v", err)
+	// It is a *sil.Bound and not a *sil.Fault: -max working is not the
+	// machine breaking, and a caller has to be able to tell.
+	var bound *sil.Bound
+	if !errors.As(err, &bound) {
+		t.Fatalf("reported %T: %v, want a *sil.Bound", err, err)
+	}
+	if bound.Cycles != 1000 {
+		t.Errorf("stopped after %d cycles, want 1000", bound.Cycles)
 	}
 }
 
@@ -308,5 +315,64 @@ func TestHelpIsNotAnError(t *testing.T) {
 	}
 	if !strings.Contains(errs.String(), "usage: sil") {
 		t.Errorf("no usage:\n%s", errs.String())
+	}
+}
+
+// -stack raises STSIZE, which is the interpreter stack and the reason
+// a recursive SNOBOL4 program stops sooner here than it needs to. The
+// historical source sets it to a thousand descriptors at line 253, and
+// that file is read-only input, so the size has to come from outside.
+func TestStackRaisesTheInterpreterStack(t *testing.T) {
+	needsEngine(t)
+
+	// Ackermann at m = 3 needs more than forty levels of nesting,
+	// which is about what a thousand descriptors buys.
+	program := "-UNLIST\n" +
+		"        DEFINE('ACK(M,N)')                       :(ACK.END)\n" +
+		"ACK     ACK = EQ(M,0) N + 1                      :S(RETURN)\n" +
+		"        ACK = EQ(N,0) ACK(M - 1,1)               :S(RETURN)\n" +
+		"        ACK = ACK(M - 1,ACK(M,N - 1))            :(RETURN)\n" +
+		"ACK.END\n" +
+		"        OUTPUT = ACK(3,3)\n" +
+		"END\n"
+	path := write(t, "ack.sno", program)
+
+	t.Run("the source's own stack is not enough", func(t *testing.T) {
+		var out, errs bytes.Buffer
+		if _, err := run([]string{path}, &out, &errs); err != nil {
+			t.Fatalf("%v\n%s", err, errs.String())
+		}
+		if !strings.Contains(out.String(), "STACK OVERFLOW") {
+			t.Errorf("this was expected to run the stack out, and printed %q", out.String())
+		}
+	})
+
+	for _, size := range []string{"35000", "35k", "35K"} {
+		t.Run("-stack "+size, func(t *testing.T) {
+			var out, errs bytes.Buffer
+			if _, err := run([]string{"-stack", size, path}, &out, &errs); err != nil {
+				t.Fatalf("%v\n%s", err, errs.String())
+			}
+			// A(3,3) is 61.
+			if got, want := out.String(), "61\n"; got != want {
+				t.Errorf("standard output is %q, want %q\n%s", got, want, errs.String())
+			}
+		})
+	}
+}
+
+// A size that is not a size is worth saying so about, rather than
+// being read as zero and quietly leaving the stack as it was.
+func TestStackRejectsWhatIsNotASize(t *testing.T) {
+	for _, size := range []string{"lots", "35kb", "", "0", "-1", "1.5k"} {
+		var out, errs bytes.Buffer
+		_, err := run([]string{"-stack", size, write(t, "x.sno", hello)}, &out, &errs)
+		if size == "" {
+			// The empty string is how the flag says it was not given.
+			continue
+		}
+		if err == nil {
+			t.Errorf("-stack %q was accepted", size)
+		}
 	}
 }

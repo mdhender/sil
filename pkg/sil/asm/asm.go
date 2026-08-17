@@ -43,6 +43,7 @@ package asm
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/mdhender/sil/pkg/sil"
 	"github.com/mdhender/sil/pkg/sil/copyseg"
@@ -68,6 +69,23 @@ type Options struct {
 	// Segments resolves COPY. Nil uses the machine-dependent segments
 	// this implementation ships.
 	Segments copyseg.Resolver
+
+	// Equates replaces the value of named EQU directives, by label.
+	//
+	// An EQU is the one thing in a SIL source that is a plain
+	// assembly-time constant, so it is the one thing that can be
+	// changed from outside without meaning anything different. What
+	// this is for is the sizes: STSIZE is the interpreter stack, at a
+	// thousand descriptors, and the historical source picked that
+	// number for a machine with a good deal less core than anything
+	// running this. Raising it is how a program that recurses deeply
+	// gets to run without editing a file that is meant to be read-only
+	// input (see AGENTS.md).
+	//
+	// A label that is not an EQU in this source is a diagnostic, not a
+	// no-op: a caller that misspells STSIZE should be told, rather
+	// than left wondering why nothing changed.
+	Equates map[string]int
 }
 
 const defaultEntry = "BEGIN"
@@ -96,6 +114,10 @@ func Assemble(file string, src []byte, opts Options) (*sil.VM, diag.List) {
 		return nil, ds
 	}
 
+	if ds := equate(stmts, opts.Equates); len(ds) > 0 {
+		return nil, ds
+	}
+
 	if ds := op.Check(stmts); len(ds) > 0 {
 		return nil, ds
 	}
@@ -106,6 +128,60 @@ func Assemble(file string, src []byte, opts Options) (*sil.VM, diag.List) {
 	}
 
 	return emit(stmts, lay, opts)
+}
+
+// equate replaces the value of the named EQU directives.
+//
+// It runs after parsing and before anything reads a value, because
+// layout resolves the equates and everything downstream reads what
+// layout worked out; changing one here is indistinguishable from the
+// source having said so in the first place.
+//
+// The replacement is a constant, not an expression, so an override
+// cannot quietly introduce a forward reference into a source that had
+// none.
+func equate(stmts []parser.Statement, values map[string]int) diag.List {
+	var ds diag.List
+	if len(values) == 0 {
+		return ds
+	}
+	found := make(map[string]bool, len(values))
+	for i := range stmts {
+		s := &stmts[i]
+		if s.Op != "EQU" || s.Label == "" {
+			continue
+		}
+		v, ok := values[s.Label]
+		if !ok {
+			continue
+		}
+		found[s.Label] = true
+		col := 16
+		if len(s.Operands) == 1 && s.Operands[0].Kind == parser.ItemExpr {
+			col = s.Operands[0].Expr.Column()
+		}
+		s.Operands = []parser.Item{{
+			Kind: parser.ItemExpr,
+			Expr: &parser.Number{Value: v, Col: col},
+			Col:  col,
+		}}
+	}
+	for _, name := range sortedKeys(values) {
+		if !found[name] {
+			ds.Addf("", 0, 0, "%s is not an EQU in this source, so there is nothing to set it to %d",
+				name, values[name])
+		}
+	}
+	return ds
+}
+
+func sortedKeys(m map[string]int) []string {
+	names := make([]string, 0, len(m))
+	for n := range m {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // emitter carries the state of a pass over the statements.

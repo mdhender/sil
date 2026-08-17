@@ -36,6 +36,7 @@
 //	sil hello.sno
 //	sil < hello.sno
 //	sil -listing core.txt hello.sno
+//	sil -stack 35k deep.sno
 //
 // The exit status is 0 when the run reached ENDEX, however the program
 // went, and 1 when something stopped it first: a source that would not
@@ -65,6 +66,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/mdhender/sil/engines"
@@ -92,6 +94,7 @@ func run(args []string, stdout, stderr io.Writer) (int, error) {
 		trace   = fs.String("trace", "", "write one line per instruction executed to this file")
 		max     = fs.Int("max", 0, "stop after this many instructions; 0 does not stop")
 		dynamic = fs.Int("dynamic", 0, "descriptors of dynamic storage; 0 takes the default")
+		stack   = fs.String("stack", "", "descriptors of interpreter stack, as 35000 or 35k; empty keeps what the SIL source chose")
 		merge   = fs.Bool("merge", false, "put the system's own output on standard output, with the program's")
 	)
 	fs.Usage = func() {
@@ -132,7 +135,12 @@ func run(args []string, stdout, stderr io.Writer) (int, error) {
 	}
 	defer closeTrace()
 
-	vm, ds := asm.Assemble(name, src, asm.Options{Host: host, Trace: traced})
+	equates, err := equates(*stack)
+	if err != nil {
+		return 0, err
+	}
+
+	vm, ds := asm.Assemble(name, src, asm.Options{Host: host, Trace: traced, Equates: equates})
 	if err := ds.Err(); err != nil {
 		return 0, fmt.Errorf("%s: %d diagnostics:\n%v", name, len(ds), err)
 	}
@@ -171,6 +179,46 @@ func run(args []string, stdout, stderr io.Writer) (int, error) {
 			vm.Status)
 	}
 	return 0, nil
+}
+
+// equates turns the sizing flags into the EQU overrides the assembler
+// takes. There is one so far.
+//
+// STSIZE is the interpreter stack, and the historical source sets it
+// to a thousand descriptors -- enough for about forty levels of a
+// recursive defined function, which was a reasonable call for the core
+// a 1975 machine had and is a low ceiling now. Raising it here rather
+// than in the source keeps engines/sil-v3.11.sil read-only input.
+func equates(stack string) (map[string]int, error) {
+	if stack == "" {
+		return nil, nil
+	}
+	n, err := size(stack)
+	if err != nil {
+		return nil, fmt.Errorf("-stack %s: %w", stack, err)
+	}
+	if n <= 0 {
+		return nil, fmt.Errorf("-stack %s: the stack has to hold something", stack)
+	}
+	return map[string]int{"STSIZE": n}, nil
+}
+
+// size reads a count that may carry a k or m suffix, so that a stack
+// of thirty-five thousand descriptors can be written the way anybody
+// would say it.
+func size(s string) (int, error) {
+	scale := 1
+	switch {
+	case strings.HasSuffix(s, "k"), strings.HasSuffix(s, "K"):
+		scale, s = 1000, s[:len(s)-1]
+	case strings.HasSuffix(s, "m"), strings.HasSuffix(s, "M"):
+		scale, s = 1000000, s[:len(s)-1]
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("not a count")
+	}
+	return n * scale, nil
 }
 
 // source returns the SIL source to assemble: the file named by
@@ -217,9 +265,40 @@ func input(names []string) (io.Reader, func(), error) {
 		readers = append(readers, f)
 		// A deck is lines; a file that does not end in one would
 		// otherwise run its last line into the next file's first.
-		readers = append(readers, strings.NewReader("\n"))
+		//
+		// Only when it does not end in one. A newline added to a file
+		// that already had it is a blank card, and a blank card is a
+		// statement: it takes a number, and every number after it in
+		// the listing and in every error message moves up by one. The
+		// deck is the files and nothing else.
+		ends, err := endsInNewline(f)
+		if err != nil {
+			closeAll()
+			return nil, nil, fmt.Errorf("%s: %w", name, err)
+		}
+		if !ends {
+			readers = append(readers, strings.NewReader("\n"))
+		}
 	}
 	return io.MultiReader(readers...), closeAll, nil
+}
+
+// endsInNewline reports whether a file's last byte is a newline,
+// leaving it positioned where it was. An empty file counts as ending
+// in one, having no last line to run into the next file's first.
+func endsInNewline(f *os.File) (bool, error) {
+	info, err := f.Stat()
+	if err != nil {
+		return false, err
+	}
+	if info.Size() == 0 {
+		return true, nil
+	}
+	var last [1]byte
+	if _, err := f.ReadAt(last[:], info.Size()-1); err != nil {
+		return false, err
+	}
+	return last[0] == '\n', nil
 }
 
 // create opens a file for writing, or returns nil for no file, which

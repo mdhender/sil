@@ -146,6 +146,32 @@ func (f *Fault) Error() string {
 	return fmt.Sprintf("%s: %d: %s", where, f.PC, f.Msg)
 }
 
+// Bound reports that MaxCycles stopped the machine, and it is
+// deliberately not a Fault. Nothing went wrong: the bound did its job,
+// and what it found out is a fact about the program rather than about
+// the machine. A SNOBOL4 program can fail to terminate for reasons
+// that are entirely faithful -- a deck without an END card leaves the
+// compiler reading cards for ever, because the card-reading loop in
+// the SIL source branches to itself on end-of-file (6.115) -- and a
+// caller that treats every error alike cannot tell that from a branch
+// into data.
+//
+// Test it for with errors.As, not by reading the message:
+//
+//	var b *sil.Bound
+//	if errors.As(err, &b) { ... }
+type Bound struct {
+	PC     int
+	Op     op.Kind
+	Src    Src
+	Cycles int
+}
+
+func (b *Bound) Error() string {
+	return fmt.Sprintf("%s: %d: %s: stopped after %d cycles, having not halted",
+		b.Src, b.PC, b.Op, b.Cycles)
+}
+
 // Interrupt is the label S4D58 7.3 says to transfer to when the
 // implementation detects a condition that should not occur: "Transfer
 // to the label INTR10 upon recognition of such an error causes the
@@ -182,7 +208,7 @@ func (s *VM) Step() error {
 		return nil
 	}
 	if s.MaxCycles > 0 && s.Cycles >= s.MaxCycles {
-		return s.fault("ran for %d cycles without halting", s.Cycles)
+		return s.bound()
 	}
 	if s.PC < 0 || s.PC >= len(s.Core) {
 		return s.fault("program counter outside core, which is %d units", len(s.Core))
@@ -460,6 +486,19 @@ func (s *VM) execute(c Cell) error {
 		return s.fault("%s is not implemented", c.Op)
 	}
 	return nil
+}
+
+// bound reports that MaxCycles stopped the machine, citing the
+// instruction it stopped on. That instruction is worth citing: a
+// program that will not stop is usually sitting in one place, and this
+// is the cheapest way to see where.
+func (s *VM) bound() error {
+	b := &Bound{PC: s.PC, Cycles: s.Cycles}
+	if s.PC >= 0 && s.PC < len(s.Core) {
+		b.Op = s.Core[s.PC].Op
+		b.Src = s.Core[s.PC].Src
+	}
+	return b
 }
 
 // fault reports a failure of the machine, citing the instruction that
