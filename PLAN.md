@@ -247,6 +247,47 @@ The ten milestones are done. What the machine does not have:
 - **`ORDVST`**, which is §6.74 note 1's documented alternative rather than the operation; the post-run dump is unalphabetized. See the miscellaneous batch.
 - **`LOAD`, `LINK` and `UNLOAD`**, which are §7.1's alternatives for a machine with no external functions.
 
+## What can be claimed
+
+The milestone table says what was built. This says what the tests actually establish, which is a narrower thing, and what they do not — so that a claim made for this repository elsewhere can be checked against the run rather than against the plan.
+
+Everything below was measured with `engines/sil-v3.11.sil` and `testdata/rosetta` present. With the engine absent the corpus tests skip, and a skip is not a pass; with the RosettaCode programs absent each of those subtests skips on its own. The figures are from a full `go test -count=1 ./...`: 813 tests, no failures, and **no skips**.
+
+### What holds
+
+**The historical source assembles clean.** All 6,580 lines — 4,832 statements, 1,624 labels, all 131 mnemonics — become 17,216 address units with zero diagnostics, and two assemblies of the same source produce byte-identical listings. This is not sampled: M2's symbol gate, M3's layout, M4's shape check and M8's emission each run over the whole file, so four independent stages would have to agree on a misreading for it to pass.
+
+**All 119 executable operations are implemented and dispatched**, each with unit tests and at least one assembled SIL program behind it (`slice.sil` through `stream.sil`).
+
+**114 of the 119 execute under the historical implementation.** This is the claim `TestOperationCoverage` in `pkg/sil/asm` exists to make, and it is a different one from the sentence above it. Unit tests say an operation does what §6 describes when this repository drives it; they cannot say the 1981 source ever reaches it, or reaches it with operands of the shape the SNOBOL4 system actually builds. An operation that is right against the document and wrong against its only caller passes every other test here. So the test assembles the unmodified engine, runs SNOBOL4 through it, and records what the machine executed, from the machine's own trace.
+
+The five it does not reach are asserted as a literal set with the reason for each, in the same style as M2's 37-name gate — so implementing one, or writing a program that reaches one, fails the test and says so. Four are operations this machine implements by the alternative the document offers rather than as written, so there is nothing to reach: `LOAD`, `LINK` and `UNLOAD` (§7.1's alternatives, applied together as footnote 4 requires) and `ORDVST` (§6.74 note 1). The fifth, `INCRV`, is a real gap: one call site at `sil-v3.11.sil:3543` and nothing written here drives the path to it.
+
+The test stands entirely on committed material. Three operations — `EXPINT`, `MNSINT` and `INSERT` — were reached only by RosettaCode's `n-queens`, which is gitignored, so they now have a probe of their own. `INSERT` was the interesting one: it is the compiler's rather than the interpreter's, and reaching it takes an operator arriving two precedence levels below the subtree already built, since one level is `ADDSIB`'s job. `'A' 'B' 'C' | 'D' 'E' 'F'` reaches it and the two-element concatenation that reads as the obvious test does not.
+
+**The machine runs SNOBOL4 nobody here wrote.** All ten RosettaCode tasks execute. Six produce what the task *description* requires — the expectations are written from the description, not recorded from the program. Four are `Unsupported`, each for a recorded reason about version 3.11 or this machine's parameters (later-SNOBOL4 builtins, lower case, `SIZLIM`), not a defect.
+
+### What needs qualifying
+
+**"Correct" here means "agrees with the documents", not "agrees with SNOBOL4".** There is no differential test against CSNOBOL4 or any other implementation. Every golden in `internal/programs` is written by hand from what the program should do, and the corpus test asserts the lines S4D58 documents the system as printing. That discipline is deliberate and it is the right one — recording a run and calling it correct is how a wrong answer becomes the standard — but it means a misreading of the manual shared between the implementation and the test would pass both. This is the largest open assumption in the repository and it is not on the risk register. Getting a reference SNOBOL4 in as an oracle is what would retire it.
+
+**The machine has only ever run at `DESCR=1, SPEC=2, CPA=1`.** The second parameter set is exercised in `pkg/sil/layout`'s corpus test, which reruns the assembly at `DESCR=2, SPEC=4, CPA=4` and rechecks the four identities. That is layout and emission. Nothing has *executed* at those values.
+
+**Several readings deviate from the printed text**, each argued from the source rather than guessed, and each recorded in the method's doc comment: `LEXCMP`'s inverted operand names (§6.53), `REMSP`'s figure over its prose (§6.90), `RCOMP`'s `EQLOC` (§6.88), `STREAM`'s dropped clause (§6.116), `EXPINT`'s negative powers (§6.32). They are this implementation's judgment about what the document meant, not what it says.
+
+### What cannot be claimed
+
+- **`&ALPHABET` is wrong.** `ALPHA` is never filled in, so it reads as 256 blanks. `charcode.sno` carries a `PENDING:` directive and the test asserts the program is *still* wrong, so fixing the cause announces itself rather than leaving a stale note behind.
+- No external functions, no timer, and no calendar unless the host supplies one; `ORDVST` is a no-op, so the post-run dump is unalphabetized.
+- `pkg/fortran` cannot overprint. `+` carriage control gets a line of its own, which is what the one site that uses it wants anyway.
+- Nothing here has been optimized, and the benchmarks exist so that nobody reasons about speed without them.
+
+### The short version
+
+An implementation of SIL faithful enough that the unmodified 1981 Macro SNOBOL4 source assembles without diagnostics and runs, with 114 of its 119 operations exercised by real SNOBOL4 programs — verified against the specification, not against another SNOBOL4.
+
+That last clause is the honest one, and it is the thing worth fixing next.
+
 ## The FORTRAN IV format interpreter
 
 `pkg/fortran`, and risk 9 with it. The boundary did not move: `Host.Print` and `Host.Output` still take the format undigested, which is where §2.1 puts it — "formats used by `STPRNT` are strings that may be formed during program execution and hence must be accepted in their undigested form" — and `cmd/sil` is a host that reads them.

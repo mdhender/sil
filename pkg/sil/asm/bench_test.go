@@ -101,14 +101,17 @@ func BenchmarkStages(b *testing.B) {
 	}
 }
 
-func engine(b *testing.B) (string, []byte) {
-	b.Helper()
+// engine is the historical source, or a skip. It takes a testing.TB
+// because both the benchmarks and TestOperationCoverage need it, and a
+// skip is not a pass either way.
+func engine(tb testing.TB) (string, []byte) {
+	tb.Helper()
 	name, src, err := corpus.Load()
 	if errors.Is(err, corpus.ErrAbsent) {
-		b.Skipf("%s: %s", name, corpus.SkipMessage)
+		tb.Skipf("%s: %s", name, corpus.SkipMessage)
 	}
 	if err != nil {
-		b.Fatal(err)
+		tb.Fatal(err)
 	}
 	return name, src
 }
